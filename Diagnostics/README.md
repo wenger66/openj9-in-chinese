@@ -1,2 +1,2 @@
-# openj9-in-chinese
-chinese annotation for openj9
+# Java dump
+官网(https://www.eclipse.org/openj9/docs/dump_javadump/)
