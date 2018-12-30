@@ -150,6 +150,7 @@ ENVINFO段落包含了程序运行环境的很多有用信息
     2CIACTIVECPU   Active CPUs: 0
     2CITARGETCPU   Target CPUs: 4
 
+
 资源限制（1CIUSERLIMITS）部分，除了NOFILE和NPROC类，其他都是字节为单位（好像不对，例如RLIMIT_CPU）。在Linux系统中，Resouce Limit指在一个进程的执行过程中，它受到的资源的限制
 * RLIMIT_AS - 进程的最大虚内存空间，字节为单位。
 * RLIMIT_CORE - 内核转存文件的最大长度。
@@ -186,6 +187,7 @@ ENVINFO段落包含了程序运行环境的很多有用信息
     2CIUSERLIMIT   RLIMIT_RTPRIO                            0                    0
     2CIUSERLIMIT   RLIMIT_SIGPENDING                    95712                95712
     
+
 环境变量（1CIENVVARS）部分，会打印出所有的环境变量，对于docker环境非常有用
 
     1CIENVVARS     Environment Variables
