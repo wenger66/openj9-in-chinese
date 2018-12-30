@@ -306,10 +306,15 @@ CPU信息（1CICPUINFO）部分，也是非常有用的
 * Bound CPUs：从容器环境看，这就是容器拥有的CPU核数
 * Target CPUs：？
 
+
     1CICPUINFO     CPU Information
     NULL           ------------------------------------------------------------------------
     2CIPHYSCPU     Physical CPUs: 8
     2CIONLNCPU     Online CPUs: 8
     2CIBOUNDCPU    Bound CPUs: 1
     2CITARGETCPU   Target CPUs: 1
+    
+    
+### NATIVEMEMINFO
+
 
