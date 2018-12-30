@@ -317,6 +317,81 @@ CPU信息（1CICPUINFO）部分，也是非常有用的
     
 ### NATIVEMEMINFO
 
+NATIVEMEMINFO部分提供了所有通过库函数例如malloc()函数和mmap()函数分配的本机内存大小，
+内存大小按照组件做了细分，每个内存类别都包含该类别和所有子类别的内存大小综合。
+在下面的例子中，4682840字节，141个分配单元？的本机内存分配给了虚拟机上的类
+
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       NATIVEMEMINFO subcomponent dump routine
+    NULL           =================================
+    0MEMUSER
+    1MEMUSER       JRE: 2,569,088,312 bytes / 4653 allocations
+    1MEMUSER       |
+    2MEMUSER       +--VM: 2,280,088,336 bytes / 2423 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Classes: 4,682,840 bytes / 141 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Memory Manager (GC): 2,054,966,784 bytes / 433 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Java Heap: 2,014,113,792 bytes / 1 allocation
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 40,852,992 bytes / 432 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Threads: 10,970,016 bytes / 156 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Java Stack: 197,760 bytes / 16 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Native Stack: 10,616,832 bytes / 17 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 155,424 bytes / 123 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Trace: 180,056 bytes / 263 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JVMTI: 17,776 bytes / 13 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JNI: 36,184 bytes / 52 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Port Library: 208,179,632 bytes / 72 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Unused <32bit allocation regions: 208,168,752 bytes / 1 allocation
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 10,880 bytes / 71 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Other: 1,055,048 bytes / 1293 allocations
+    1MEMUSER       |
+    2MEMUSER       +--JIT: 288,472,816 bytes / 140 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JIT Code Cache: 268,435,456 bytes / 1 allocation
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JIT Data Cache: 2,097,216 bytes / 1 allocation
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Other: 17,940,144 bytes / 138 allocations
+    1MEMUSER       |
+    2MEMUSER       +--Class Libraries: 13,432 bytes / 25 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--VM Class Libraries: 13,432 bytes / 25 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--sun.misc.Unsafe: 3,184 bytes / 13 allocations
+    4MEMUSER       |  |  |  |
+    5MEMUSER       |  |  |  +--Direct Byte Buffers: 1,056 bytes / 12 allocations
+    4MEMUSER       |  |  |  |
+    5MEMUSER       |  |  |  +--Other: 2,128 bytes / 1 allocation
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 10,248 bytes / 12 allocations
+    1MEMUSER       |
+    2MEMUSER       +--Unknown: 513,728 bytes / 2065 allocations
+    NULL           
+
+
+可以在VM Class libraries部分找到 Direct Byte Buffers的内存类别
+
+如果设置Dcom.ibm.dbgmalloc=true之后，会在Class Libraries 部分中记录明细的内存分类信息
+
+这部分不会记录应用分配的或者JNI code分配的内存
+
+这部分统计的内存总量始终略低于通过操作系统工具统计的本机地址空间总使用量ß
+
 
 
 ### THREADS
