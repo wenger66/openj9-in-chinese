@@ -390,7 +390,90 @@ NATIVEMEMINFO部分提供了所有通过库函数例如malloc()函数和mmap()�
 
 这部分不会记录应用分配的或者JNI code分配的内存
 
-这部分统计的内存总量始终略低于通过操作系统工具统计的本机地址空间总使用量ß
+这部分统计的内存总量始终略低于通过操作系统工具统计的本机地址空间总使用量
+
+### MEMINFO
+MEMINFO部分与内存管理有关，提供了虚拟机对内存使用的分类明细的10进制和16进制格式，包括对象堆，内部内存，类使用的内存，
+JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使用的垃圾回收策略
+
+堆内存部分（1STHEAPTYPE）记录对象内存使用的堆区域信息，包括堆区域的开始、结束的地址，以及堆区域的大小
+段内存部分（1STSEGMENT）记录了内部内存，类占用内存，JIT代码高速缓存和JIT数据高速缓存的分段信息，
+包括控制分段的数据结构的地址，分段开始和分段结束的地址，以及分段大小
+
+为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+
+堆内存部分 (HEAPTYPE)：
+* id - 空间或区域的标识
+* start - 堆区域的启动地址
+* end - 堆区域的结束地址
+* size - 堆区域的大小
+* space/region - 对于仅包含id和名称的行，该列显示内存空间的名称。否则，该列显示内存空间名称，后跟该内存空间中包含的特定区域的名称。
+
+段内存部分 (SEGTYPE)：
+* segment - 段控制数据结构的地址
+* start - 本机内存段的开始地址
+* alloc - 本机内存段的当前分配地址
+* end - 本机内存段的结束地址
+* type - 内部位字段，用于描述本机内存段的特征
+* size - 本机内存段的大小
+
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       MEMINFO subcomponent dump routine
+    NULL           =================================
+    NULL           
+    1STHEAPTYPE    Object Memory
+    NULL           id                 start              end                size               space/region
+    1STHEAPSPACE   0x00007FF4F00744A0         --                 --                 --         Generational
+    1STHEAPREGION  0x00007FF4F0074CE0 0x0000000087F40000 0x0000000088540000 0x0000000000600000 Generational/Tenured Region
+    1STHEAPREGION  0x00007FF4F0074930 0x00000000FFE00000 0x00000000FFF00000 0x0000000000100000 Generational/Nursery Region
+    1STHEAPREGION  0x00007FF4F0074580 0x00000000FFF00000 0x0000000100000000 0x0000000000100000 Generational/Nursery Region
+    NULL
+    1STHEAPTOTAL   Total memory:                     8388608 (0x0000000000800000)
+    1STHEAPINUSE   Total memory in use:              2030408 (0x00000000001EFB48)
+    1STHEAPFREE    Total memory free:                6358200 (0x00000000006104B8)
+    NULL
+    1STSEGTYPE     Internal Memory
+    NULL           segment            start              alloc              end                type       size
+    1STSEGMENT     0x00007FF4F004CBC8 0x00007FF4CD33C000 0x00007FF4CD33C000 0x00007FF4CE33C000 0x01000440 0x0000000001000000
+    1STSEGMENT     0x00007FF4F004CB08 0x00007FF4DE43D030 0x00007FF4DE517770 0x00007FF4DE53D030 0x00800040 0x0000000000100000
+    NULL
+    1STSEGTOTAL    Total memory:                    17825792 (0x0000000001100000)
+    1STSEGINUSE    Total memory in use:               894784 (0x00000000000DA740)
+    1STSEGFREE     Total memory free:               16931008 (0x00000000010258C0)
+    NULL           
+    1STSEGTYPE     Class Memory
+    NULL           segment            start              alloc              end                type       size
+    1STSEGMENT     0x00007FF4F03B5638 0x0000000001053D98 0x000000000105BD98 0x000000000105BD98 0x00010040 0x0000000000008000
+    1STSEGMENT     0x00007FF4F03B5578 0x0000000001048188 0x0000000001050188 0x0000000001050188 0x00010040 0x0000000000008000
+    ...
+    NULL
+    1STSEGTOTAL    Total memory:                     3512520 (0x00000000003598C8)
+    1STSEGINUSE    Total memory in use:              3433944 (0x00000000003465D8)
+    1STSEGFREE     Total memory free:                  78576 (0x00000000000132F0)
+    NULL           
+    1STSEGTYPE     JIT Code Cache
+    NULL           segment            start              alloc              end                type       size
+    1STSEGMENT     0x00007FF4F00961F8 0x00007FF4CE43D000 0x00007FF4CE445790 0x00007FF4DE43D000 0x00000068 0x0000000010000000
+    NULL
+    1STSEGTOTAL    Total memory:                   268435456 (0x0000000010000000)
+    1STSEGINUSE    Total memory in use:                34704 (0x0000000000008790)
+    1STSEGFREE     Total memory free:              268400752 (0x000000000FFF7870)
+    1STSEGLIMIT    Allocation limit:               268435456 (0x0000000010000000)
+    NULL           
+    1STSEGTYPE     JIT Data Cache
+    NULL           segment            start              alloc              end                type       size
+    1STSEGMENT     0x00007FF4F0096668 0x00007FF4CC553030 0x00007FF4CC753030 0x00007FF4CC753030 0x00000048 0x0000000000200000
+    NULL
+    1STSEGTOTAL    Total memory:                     2097152 (0x0000000000200000)
+    1STSEGINUSE    Total memory in use:              2097152 (0x0000000000200000)
+    1STSEGFREE     Total memory free:                      0 (0x0000000000000000)
+    1STSEGLIMIT    Allocation limit:               402653184 (0x0000000018000000)
+    NULL           
+    1STGCHTYPE     GC History  
+    NULL 
+    
+这个例子中，GC History部分是空的。只要虚拟机进行过一次GC，这部分就会丰富起来。
 
 
 
