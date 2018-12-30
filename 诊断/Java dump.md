@@ -317,4 +317,6 @@ CPU信息（1CICPUINFO）部分，也是非常有用的
     
 ### NATIVEMEMINFO
 
+https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html 
+
 
