@@ -87,6 +87,7 @@ ENVINFO段落包含了程序运行环境的很多有用信息
 * 环境变量（1CIENVVARS）
 * 系统信息（1CISYSINFO）
 * CPU信息（1CICPUINFO）
+================================================================
 
 
     NULL           ------------------------------------------------------------------------
@@ -166,6 +167,7 @@ ENVINFO段落包含了程序运行环境的很多有用信息
 * RLIMIT_RTPRIO - 进程可通过sched_setscheduler 和 sched_setparam设置的最大实时优先级。
 * RLIMIT_SIGPENDING - 用户可拥有的最大挂起信号数。
 * RLIMIT_STACK - 最大的进程堆栈，以字节为单位。
+==================================================
 
 
     1CIUSERLIMITS  User Limits (in bytes except for NOFILE and NPROC)
