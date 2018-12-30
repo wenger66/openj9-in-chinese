@@ -317,6 +317,26 @@ CPU信息（1CICPUINFO）部分，也是非常有用的
     
 ### NATIVEMEMINFO
 
-https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html 
+
+
+### THREADS
+
+* 3XMTHREADINFO：线程名称，虚拟机线程结构的地址信息，Java线程对象，线程状态和线程优先级
+* 3XMTHREADINFO1：本地操作系统的线程ID，优先级，调度策略，虚拟机线程状态，虚拟机线程标记
+* 3XMTHREADINFO2：本地栈的地址范围
+* 3XMJAVALTHREAD：Java线程ID和daemon状态
+* 5XESTACKTRACE：调用堆栈，这部分可以表明是否有方法锁住了当前的线程
+
+关于Java的Daemon的解释：参考[这里](https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html)
+
+
+Thread state value	Status	Description
+R	Runnable	The thread is able to run
+CW	Condition Wait	The thread is waiting
+S	Suspended	The thread is suspended by another thread
+Z	Zombie	The thread is destroyed
+P	Parked	The thread is parked by java.util.concurrent
+B	Blocked	The thread is waiting to obtain a lock
+
 
 
