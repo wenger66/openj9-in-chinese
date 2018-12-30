@@ -1,4 +1,4 @@
-# Java dump (https://www.eclipse.org/openj9/docs/dump_javadump/)
+# [Java dump] (https://github.com/wenger66/openj9-in-chinese/blob/master/诊断/Java_dump.md)
 ## 格式
 ### 文件格式
 Java dump 通常是文本格式(.txt)，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
