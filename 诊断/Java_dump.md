@@ -481,6 +481,34 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
     
 这个例子中，GC History部分是空的。只要虚拟机进行过一次GC，这部分就会丰富起来。
 
+### LOCKS
+LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体访问的共享对象。这部分的信息在系统
+出现死锁时尤为关键，死锁是指两个或多个线程互相持有对方需要的锁。这部分中有导致死锁的线程的
+详细信息，可以帮助你确定死锁的根源。
+
+下面的例子展示了典型的没有出现死锁的LOCKS部分信息。为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       LOCKS subcomponent dump routine
+    NULL           ===============================
+    NULL           
+    1LKPOOLINFO    Monitor pool info:
+    2LKPOOLTOTAL     Current total number of monitors: 3
+    NULL           
+    1LKMONPOOLDUMP Monitor Pool Dump (flat & inflated object-monitors):
+    2LKMONINUSE      sys_mon_t:0x00007FF4B0001D78 infl_mon_t: 0x00007FF4B0001DF8:
+    3LKMONOBJECT       java/lang/ref/ReferenceQueue@0x00000000FFE26A10: <unowned>
+    3LKNOTIFYQ            Waiting to be notified:
+    3LKWAITNOTIFY            "Common-Cleaner" (J9VMThread:0x0000000000FD0100)
+    NULL           
+    1LKREGMONDUMP  JVM System Monitor Dump (registered monitors):
+    2LKREGMON          Thread global lock (0x00007FF4F0004FE8): <unowned>
+    2LKREGMON          &(PPG_mem_mem32_subAllocHeapMem32.monitor) lock (0x00007FF4F0005098): <unowned>
+    2LKREGMON          NLS hash table lock (0x00007FF4F0005148): <unowned>
+    ...
+    NULL           
+    
+    
 
 
 ### THREADS
