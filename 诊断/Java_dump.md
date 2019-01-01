@@ -1,4 +1,7 @@
 # [Java dump](https://github.com/wenger66/openj9-in-chinese/blob/master/诊断/Java_dump.md)
+Javadump 也称为 Javacore。Java 转储的缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt
+
+
 ## 格式
 ### 文件格式
 Java dump 通常是文本格式(.txt)，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
@@ -486,6 +489,8 @@ LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体
 出现死锁时尤为关键，死锁是指两个或多个线程互相持有对方需要的锁。这部分中有导致死锁的线程的
 详细信息，可以帮助你确定死锁的根源。
 
+在进行Java dump时，JVM会尝试检测死锁循环。
+
 下面的例子展示了典型的没有出现死锁的LOCKS部分信息。为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
 
     NULL           ------------------------------------------------------------------------
@@ -509,26 +514,165 @@ LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体
     NULL           
     
     
+下面的例子来自死锁测试程序。请看Deadlock detected !!!部分，Deadlock Thread 0 等待着
+Deadlock Thread 1持有锁的String对象，而Deadlock Thead 1等待着Deadlock Thead 0持有的
+ReentrantLock实例
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       LOCKS subcomponent dump routine
+    NULL           ===============================
+    NULL            
+    1LKPOOLINFO    Monitor pool info:
+    2LKPOOLTOTAL     Current total number of monitors: 2
+    NULL            
+    1LKMONPOOLDUMP Monitor Pool Dump (flat & inflated object-monitors):
+    2LKMONINUSE      sys_mon_t:0x00007F5E24013F10 infl_mon_t: 0x00007F5E24013F88:
+    3LKMONOBJECT      java/lang/String@0x00007F5E5E18E3D8: Flat locked by "Deadlock Thread 1" (0x00007F5E84362100), entry count 1
+    3LKWAITERQ            Waiting to enter:
+    3LKWAITER                "Deadlock Thread 0" (0x00007F5E8435BD00)
+    NULL            
+    1LKREGMONDUMP  JVM System Monitor Dump (registered monitors):
+    2LKREGMON          Thread global lock (0x00007F5E84004F58): <unowned>
+    2LKREGMON          &(PPG_mem_mem32_subAllocHeapMem32.monitor) lock (0x00007F5E84005000): <unowned>
+    2LKREGMON          NLS hash table lock (0x00007F5E840050A8): <unowned>
+                < lines removed for brevity >
+    
+    1LKDEADLOCK    Deadlock detected !!!
+    NULL           ---------------------
+    NULL            
+    2LKDEADLOCKTHR  Thread "Deadlock Thread 0" (0x00007F5E8435BD00)
+    3LKDEADLOCKWTR    is waiting for:
+    4LKDEADLOCKMON      sys_mon_t:0x00007F5E24013F10 infl_mon_t: 0x00007F5E24013F88:
+    4LKDEADLOCKOBJ      java/lang/String@0x00007F5E5E18E3D8
+    3LKDEADLOCKOWN    which is owned by:
+    2LKDEADLOCKTHR  Thread "Deadlock Thread 1" (0x00007F5E84362100)
+    3LKDEADLOCKWTR    which is waiting for:
+    4LKDEADLOCKOBJ      java/util/concurrent/locks/ReentrantLock$NonfairSync@0x00007F5E7E1464F0
+    3LKDEADLOCKOWN    which is owned by:
+    2LKDEADLOCKTHR  Thread "Deadlock Thread 0" (0x00007F5E8435BD00)
 
 
 ### THREADS
 
-* 3XMTHREADINFO：线程名称，虚拟机线程结构的地址信息，Java线程对象，线程状态和线程优先级
+THREADS部分提供了虚拟机线程池的概要信息，Java线程、本地线程的详细信息，以及线程调用栈。
+对于应用程序员而言，本部分是Java dump最有用、最常观察的部分之一，可以帮助你定位阻塞、等待的线程。
+
+* 3XMTHREADINFO：线程名称，虚拟机线程结构和Java线程对象的地址，Java线程状态和Java线程优先级
+* 3XMJAVALTHREAD：Java线程ID和daemon状态
 * 3XMTHREADINFO1：本地操作系统的线程ID，优先级，调度策略，虚拟机线程状态，虚拟机线程标记
 * 3XMTHREADINFO2：本地栈的地址范围
-* 3XMJAVALTHREAD：Java线程ID和daemon状态
-* 5XESTACKTRACE：调用堆栈，这部分可以表明是否有方法锁住了当前的线程
+* 3XMTHREADINFO3：Java调用栈信息或本地调用栈信息
+* 5XESTACKTRACE：调用堆栈，这部分可以表明是否有方法持有了某个锁
 
 关于Java的Daemon的解释：参考[这里](https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html)
 
+Java线程优先级会根据平台映射至操作系统优先级值。较大的Java线程优先级值表明该线程具有较高的优先级。换言之，该线程会比较低优先级的线程更频繁地运行。
 
-Thread state value	Status	Description
-R	Runnable	The thread is able to run
-CW	Condition Wait	The thread is waiting
-S	Suspended	The thread is suspended by another thread
-Z	Zombie	The thread is destroyed
-P	Parked	The thread is parked by java.util.concurrent
-B	Blocked	The thread is waiting to obtain a lock
+Java线程状态和虚拟机线程状态的值可以是以下
+* R - 可运行 - 条件满足时，该线程将运行。
+* CW - 等待条件 - 该线程正在等待。例如，由于I/O已阻止了该线程调用了 wait() 方法，
+以等待通知监视器该线程通过 join() 调用正在与另一个线程同步
+* S – 已挂起 – 该线程已被另一个线程刮起
+* Z – 僵死 – 该线程已被结束
+* P – 已停放 – 该线程已因并发 API (java.util.concurrent) 而被停放。如线程池中的线程被使用后再次放回线程池，状态即为Parked
+* B – 已阻塞 – 该线程正在等待获取其他对象当前拥有的锁
+
+如果线程已停放(P)、已阻塞(B)、正在等待条件(CW)，那么输出信息中会包含以3XMTHREADBLOCK开头的一行，
+会列出该线程正在等待的资源，以及当前拥有该资源的线程。
+
+为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       THREADS subcomponent dump routine
+    NULL           =================================
+    NULL
+    1XMPOOLINFO    JVM Thread pool info:
+    2XMPOOLTOTAL       Current total number of pooled threads: 18
+    2XMPOOLLIVE        Current total number of live threads: 16
+    2XMPOOLDAEMON      Current total number of live daemon threads: 15
+    NULL           
+    1XMTHDINFO     Thread Details
+    NULL           
+    3XMTHREADINFO      "JIT Diagnostic Compilation Thread-7 Suspended" J9VMThread:0x0000000000EFC500, omrthread_t:0x00007FF4F00A77E8, java/lang/Thread:0x00000000FFE97480, state:R, prio=10
+    3XMJAVALTHREAD            (java/lang/Thread getId:0xA, isDaemon:true)
+    3XMTHREADINFO1            (native thread ID:0x7657, native priority:0xB, native policy:UNKNOWN, vmstate:CW, vm thread flags:0x00000081)
+    3XMTHREADINFO2            (native stack address range from:0x00007FF4CCC36000, to:0x00007FF4CCD36000, size:0x100000)
+    3XMCPUTIME               CPU usage total: 0.000037663 secs, current category="JIT"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           No Java callstack associated with this thread
+    3XMTHREADINFO3           No native callstack available for this thread
+    NULL
+    ...
+    3XMTHREADINFO      "Common-Cleaner" J9VMThread:0x0000000000FD0100, omrthread_t:0x00007FF4F022A520, java/lang/Thread:0x00000000FFE26F40, state:CW, prio=8
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x2, isDaemon:true)
+    3XMTHREADINFO1            (native thread ID:0x765A, native priority:0x8, native policy:UNKNOWN, vmstate:CW, vm thread flags:0x00080181)
+    3XMTHREADINFO2            (native stack address range from:0x00007FF4CC0B8000, to:0x00007FF4CC0F8000, size:0x40000)
+    3XMCPUTIME               CPU usage total: 0.000150926 secs, current category="Application"
+    3XMTHREADBLOCK     Waiting on: java/lang/ref/ReferenceQueue@0x00000000FFE26A10 Owned by: <unowned>
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at java/lang/Object.wait(Native Method)
+    4XESTACKTRACE                at java/lang/Object.wait(Object.java:221)
+    4XESTACKTRACE                at java/lang/ref/ReferenceQueue.remove(ReferenceQueue.java:138)
+    5XESTACKTRACE                   (entered lock: java/lang/ref/ReferenceQueue@0x00000000FFE26A10, entry count: 1)
+    4XESTACKTRACE                at jdk/internal/ref/CleanerImpl.run(CleanerImpl.java:148)
+    4XESTACKTRACE                at java/lang/Thread.run(Thread.java:835)
+    4XESTACKTRACE                at jdk/internal/misc/InnocuousThread.run(InnocuousThread.java:122)
+    3XMTHREADINFO3           No native callstack available for this thread
+    NULL
+    NULL
+    3XMTHREADINFO      "IProfiler" J9VMThread:0x0000000000F03D00, omrthread_t:0x00007FF4F00B06F8, java/lang/Thread:0x00000000FFE97B60, state:R, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0xC, isDaemon:true)
+    3XMTHREADINFO1            (native thread ID:0x7659, native priority:0x5, native policy:UNKNOWN, vmstate:CW, vm thread flags:0x00000081)
+    3XMTHREADINFO2            (native stack address range from:0x00007FF4F8940000, to:0x00007FF4F8960000, size:0x20000)
+    3XMCPUTIME               CPU usage total: 0.004753103 secs, current category="JIT"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           No Java callstack associated with this thread
+    3XMTHREADINFO3           No native callstack available for this thread
+    NULL
+    ...
+    1XMWLKTHDERR   The following was reported while collecting native stacks:
+    2XMWLKTHDERR             unable to count threads(3, -2)
+    NULL
+    1XMTHDSUMMARY  Threads CPU Usage Summary
+    NULL           =========================
+    NULL
+    1XMTHDCATINFO  Warning: to get more accurate CPU times for the GC, the option -XX:-ReduceCPUMonitorOverhead can be used. See the user guide for more information.
+    NULL
+    1XMTHDCATEGORY All JVM attached threads: 0.280083000 secs
+    1XMTHDCATEGORY |
+    2XMTHDCATEGORY +--System-JVM: 0.270814000 secs
+    2XMTHDCATEGORY |  |
+    3XMTHDCATEGORY |  +--GC: 0.000599000 secs
+    2XMTHDCATEGORY |  |
+    3XMTHDCATEGORY |  +--JIT: 0.071904000 secs
+    1XMTHDCATEGORY |
+    2XMTHDCATEGORY +--Application: 0.009269000 secs
+    NULL
+    
+#### 阻塞线程
+
+以下是 Javadump 的 THREADS 部分中的输出样本，
+显示处于阻塞状态的线程 Thread-5，该线程状态是已阻塞。 
+该线程等待资源 java/lang/String@0x4D8C90F8，这个资源目前由线程 main 拥有。
+
+    3XMTHREADINFO      "Thread-5" J9VMThread:0x4F6E4100, j9thread_t:0x501C0A28, java/lang/Thread:0x4D8C9520, state:B, prio=5
+    3XMTHREADINFO1            (native thread ID:0x664, native priority:0x5, native policy:UNKNOWN)
+    3XMTHREADBLOCK     Blocked on: java/lang/String@0x4D8C90F8 Owned by: "main" (J9VMThread:0x00129100, java/lang/Thread:0x00DD4798)
+    
+Javadump的LOCKS 部分显示有关该块的以下对应输出：
+
+    1LKMONPOOLDUMP Monitor Pool Dump (flat & inflated object-monitors):
+    2LKMONINUSE      sys_mon_t:0x501C18A8 infl_mon_t: 0x501C18E4:
+    3LKMONOBJECT       java/lang/String@0x4D8C90F8: Flat locked by "main" (0x00129100), entry count 1
+    3LKWAITERQ            Waiting to enter:
+    3LKWAITER                "Thread-5" (0x4F6E4100)
+    
+你可以在Javadump的THREADS部分中的其他内容中查找有关阻塞线程 main 信息，
+以了解main线程正在执行的操作
+
+
+
 
 
 
