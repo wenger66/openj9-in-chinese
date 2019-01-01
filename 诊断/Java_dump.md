@@ -652,15 +652,15 @@ Java线程状态和虚拟机线程状态的值可以是以下
     
 #### 阻塞线程
 
-以下是 Javadump 的 THREADS 部分中的输出样本，
-显示处于阻塞状态的线程 Thread-5，该线程状态是已阻塞。 
-该线程等待资源 java/lang/String@0x4D8C90F8，这个资源目前由线程 main 拥有。
+以下是 Javadump 的 THREADS 部分中的输出样例，
+显示处于阻塞状态的线程 Thread-5，该线程状态是已阻塞（B）。 
+该线程等待资源 java/lang/String@0x4D8C90F8，这个资源目前由线程 main 拥有
 
     3XMTHREADINFO      "Thread-5" J9VMThread:0x4F6E4100, j9thread_t:0x501C0A28, java/lang/Thread:0x4D8C9520, state:B, prio=5
     3XMTHREADINFO1            (native thread ID:0x664, native priority:0x5, native policy:UNKNOWN)
     3XMTHREADBLOCK     Blocked on: java/lang/String@0x4D8C90F8 Owned by: "main" (J9VMThread:0x00129100, java/lang/Thread:0x00DD4798)
     
-Javadump的LOCKS 部分显示有关该块的以下对应输出：
+Javadump 的 LOCKS 部分显示有关该块的以下对应输出：
 
     1LKMONPOOLDUMP Monitor Pool Dump (flat & inflated object-monitors):
     2LKMONINUSE      sys_mon_t:0x501C18A8 infl_mon_t: 0x501C18E4:
@@ -668,9 +668,27 @@ Javadump的LOCKS 部分显示有关该块的以下对应输出：
     3LKWAITERQ            Waiting to enter:
     3LKWAITER                "Thread-5" (0x4F6E4100)
     
-你可以在Javadump的THREADS部分中的其他内容中查找有关阻塞线程 main 信息，
-以了解main线程正在执行的操作
+你可以在 Javadump 的 THREADS 部分中的其他内容中查找有关阻塞线程 main 信息，
+以了解 main 线程正在执行的操作
 
+#### 等待线程
+以下是 Javadump 的 THREADS 部分中的输出样例，
+显示处于等待状态线程 Thread-5，该线程状态是正在等待（CW）。 
+该线程等待获得有关资源 java/lang/String@0x4D8C90F8 的通知，这个资源目前由线程 main 拥有
+
+
+    3XMTHREADINFO      "Thread-5" J9VMThread:0x00503D00, j9thread_t:0x00AE45C8, java/lang/Thread:0x68E04F90, state:CW, prio=5
+    3XMTHREADINFO1            (native thread ID:0xC0C, native priority:0x5, native policy:UNKNOWN)
+    3XMTHREADBLOCK     Waiting on: java/lang/String@0x68E63E60 Owned by: "main" (J9VMThread:0x6B3F9A00, java/lang/Thread:0x68E64178)
+
+Javadump 的 LOCKS 部分显示有关正在等待的监视器的对应输出
+
+    1LKMONPOOLDUMP Monitor Pool Dump (flat & inflated object-monitors):
+    2LKMONINUSE      sys_mon_t:0x00A0ADB8 infl_mon_t: 0x00A0ADF4:
+    3LKMONOBJECT       java/lang/String@0x68E63E60: owner "main" (0x6B3F9A00), entry count 1
+    3LKNOTIFYQ            Waiting to be notified:
+    3LKWAITNOTIFY            "Thread-5" (0x00503D00)、
+    
 
 
 
