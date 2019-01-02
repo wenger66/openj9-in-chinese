@@ -1,10 +1,10 @@
-# [Java dump](https://github.com/wenger66/openj9-in-chinese/blob/master/诊断/Java_dump.md)
+# [Javadump](https://github.com/wenger66/openj9-in-chinese/blob/master/诊断/Java_dump.md)
 Javadump 也称为 Javacore。Java 转储的缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt
 
 
 ## 格式
 ### 文件格式
-Java dump 通常是文本格式(.txt)，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
+Javadump 通常是文本格式(.txt)，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
 ### 段落格式
 * 每一段的开头，都会用“-----”与上一段明显的区分开来
 * 每一段的标题也会用“=====”作为标识
@@ -24,7 +24,7 @@ Java dump 通常是文本格式(.txt)，因此可以通过一般的文本编辑�
 其余部分为信息的概述
 
 ## 内容
-Java dump汇总了事件发生时虚拟机的状态，包括大部分虚拟机组件的信息，dump文件由多个部分组成，每个部分提供了不同的信息
+Javadump汇总了事件发生时虚拟机的状态，包括大部分虚拟机组件的信息，dump文件由多个部分组成，每个部分提供了不同的信息
 
 感觉段落用英文更加专业，无歧义
 ### TITLE 
@@ -415,8 +415,9 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 * id - 空间或区域的标识
 * start - 堆区域的启动地址
 * end - 堆区域的结束地址
-* size - 堆区域的大小
-* space/region - 对于仅包含id和名称的行，该列显示内存空间的名称。否则，该列显示内存空间名称，后跟该内存空间中包含的特定区域的名称。
+* size - 堆区域的大小(单位：字节)
+* space/region - 对于仅包含id和名称的行，该列显示内存空间的名称。否则，该列显示内存空间名称，
+后跟该内存空间中包含的特定区域的名称。
 
 段内存部分 (SEGTYPE)：
 * segment - 段控制数据结构的地址
@@ -424,8 +425,13 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 * alloc - 本机内存段的当前分配地址
 * end - 本机内存段的结束地址
 * type - 内部位字段，用于描述本机内存段的特征
-* size - 本机内存段的大小
+* size - 本机内存段的大小(单位：字节)
 
+关于堆/段/内部内存/类占用内存的解释：参考[这里](https://github.com/wenger66/openj9-in-chinese/blob/master/垃圾回收/Memory_Manager.md)
+
+<font color="red">**为什么Class Memory占用率那么高**</font>
+
+<font color="red">**为什么JIT Code Cache闲置率那么高**</font>
 
     NULL           ------------------------------------------------------------------------
     0SECTION       MEMINFO subcomponent dump routine
@@ -482,16 +488,126 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
     1STGCHTYPE     GC History  
     NULL 
     
-这个例子中，GC History部分是空的。只要虚拟机进行过一次GC，这部分就会丰富起来。
+上个例子中，GC History部分是空的。只要虚拟机进行过一次GC，这部分就会丰富起来，比如下面的例子
+
+    1STGCHTYPE     GC History  
+    3STHSTTYPE     08:48:06:800805000 GMT j9mm.101 -   J9AllocateIndexableObject() returning NULL! 329392 bytes requested for object of class 000000000067FC00 from memory space 'Generational' id=00007F39B4082C00 
+    3STHSTTYPE     08:48:06:800804000 GMT j9mm.84 -   Forcing J9AllocateIndexableObject() to fail due to excessive GC 
+    3STHSTTYPE     08:48:06:800174000 GMT j9mm.134 -   Allocation failure end: newspace=1832822760/2415919104 oldspace=72120272/7247757312 loa=72120272/72476672 
+    3STHSTTYPE     08:48:06:799911000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72120272/7247757312 loa=72120272/72476672 
+    3STHSTTYPE     08:48:06:799529000 GMT j9mm.560 -   LocalGC end: rememberedsetoverflow=0 causedrememberedsetoverflow=0 scancacheoverflow=0 failedflipcount=1 failedflipbytes=131080 failedtenurecount=6832777 failedtenurebytes=289040616 flipcount=6832775 flipbytes=288895056 newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 tenureage=0 
+    3STHSTTYPE     08:48:06:798895000 GMT j9mm.140 -   Tilt ratio: 88 
+    3STHSTTYPE     08:48:05:640728000 GMT j9mm.63 -   Set scavenger backout flag=true 
+    3STHSTTYPE     08:48:04:916866000 GMT j9mm.64 -   LocalGC start: globalcount=140 scavengecount=1890 weakrefs=0 soft=0 phantom=0 finalizers=0 
+    3STHSTTYPE     08:48:04:916699000 GMT j9mm.63 -   Set scavenger backout flag=false 
+    3STHSTTYPE     08:48:04:911150000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=0.151 meanexclusiveaccessms=0.122 threads=1 lastthreadtid=0x0000000000DCC060 beatenbyotherthread=1 
+    3STHSTTYPE     08:48:04:911149000 GMT j9mm.469 -   Allocation failure cycle start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=329392 
+    3STHSTTYPE     08:48:04:911135000 GMT j9mm.133 -   Allocation failure start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=329392 
+    3STHSTTYPE     08:48:04:910535000 GMT j9mm.101 -   J9AllocateIndexableObject() returning NULL! 72 bytes requested for object of class 0000000000670200 from memory space 'Generational' id=00007F39B4082C00 
+    3STHSTTYPE     08:48:04:908312000 GMT j9mm.134 -   Allocation failure end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:48:04:908301000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:48:04:907905000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=1905272424/9663676416 
+    3STHSTTYPE     08:48:04:907434000 GMT j9mm.90 -   GlobalGC collect complete 
+    3STHSTTYPE     08:48:04:906663000 GMT j9mm.137 -   Compact end: bytesmoved=0 
+    3STHSTTYPE     08:47:30:793585000 GMT j9mm.136 -   Compact start: reason=low free space (less than 4%) 
+    3STHSTTYPE     08:47:30:793485000 GMT j9mm.57 -   Sweep end 
+    3STHSTTYPE     08:47:30:286766000 GMT j9mm.56 -   Sweep start 
+    3STHSTTYPE     08:47:30:286738000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0 
+    3STHSTTYPE     08:47:30:286601000 GMT j9mm.60 -   Class unloading start 
+    3STHSTTYPE     08:47:30:286535000 GMT j9mm.55 -   Mark end 
+    3STHSTTYPE     08:47:21:352798000 GMT j9mm.54 -   Mark start 
+    3STHSTTYPE     08:47:21:352650000 GMT j9mm.474 -   GlobalGC start: globalcount=139 
+    3STHSTTYPE     08:47:21:350631000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=1905272424/9663676416 
+    3STHSTTYPE     08:47:21:350174000 GMT j9mm.90 -   GlobalGC collect complete 
+    3STHSTTYPE     08:47:21:349336000 GMT j9mm.137 -   Compact end: bytesmoved=0 
+    3STHSTTYPE     08:46:46:987908000 GMT j9mm.136 -   Compact start: reason=low free space (less than 4%) 
+    3STHSTTYPE     08:46:46:987783000 GMT j9mm.57 -   Sweep end 
+    3STHSTTYPE     08:46:46:358371000 GMT j9mm.56 -   Sweep start 
+    3STHSTTYPE     08:46:46:358357000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0 
+    3STHSTTYPE     08:46:46:358272000 GMT j9mm.60 -   Class unloading start 
+    3STHSTTYPE     08:46:46:358216000 GMT j9mm.55 -   Mark end 
+    3STHSTTYPE     08:46:37:239844000 GMT j9mm.54 -   Mark start 
+    3STHSTTYPE     08:46:37:239692000 GMT j9mm.474 -   GlobalGC start: globalcount=138 
+    3STHSTTYPE     08:46:37:239575000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=4.811 meanexclusiveaccessms=4.811 threads=0 lastthreadtid=0x0000000000DCC060 beatenbyotherthread=0 
+    3STHSTTYPE     08:46:37:239574000 GMT j9mm.469 -   Allocation failure cycle start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=72 
+    3STHSTTYPE     08:46:37:239247000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:46:37:238715000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=1905272424/9663676416 
+    3STHSTTYPE     08:46:37:238218000 GMT j9mm.90 -   GlobalGC collect complete 
+    3STHSTTYPE     08:46:37:237166000 GMT j9mm.137 -   Compact end: bytesmoved=0 
+    3STHSTTYPE     08:46:00:507750000 GMT j9mm.136 -   Compact start: reason=low free space (less than 4%) 
+    3STHSTTYPE     08:46:00:507607000 GMT j9mm.57 -   Sweep end 
+    3STHSTTYPE     08:45:59:920348000 GMT j9mm.56 -   Sweep start 
+    3STHSTTYPE     08:45:59:920334000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0 
+    3STHSTTYPE     08:45:59:920240000 GMT j9mm.60 -   Class unloading start 
+    3STHSTTYPE     08:45:59:920173000 GMT j9mm.55 -   Mark end 
+    3STHSTTYPE     08:45:50:828059000 GMT j9mm.54 -   Mark start 
+    3STHSTTYPE     08:45:50:827912000 GMT j9mm.474 -   GlobalGC start: globalcount=137 
+    3STHSTTYPE     08:45:50:827714000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=4.811 meanexclusiveaccessms=4.811 threads=0 lastthreadtid=0x0000000000DCC060 beatenbyotherthread=0 
+    3STHSTTYPE     08:45:50:827712000 GMT j9mm.469 -   Allocation failure cycle start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=72 
+    3STHSTTYPE     08:45:50:827509000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:45:50:826930000 GMT j9mm.560 -   LocalGC end: rememberedsetoverflow=0 causedrememberedsetoverflow=0 scancacheoverflow=0 failedflipcount=1 failedflipbytes=160 failedtenurecount=6733084 failedtenurebytes=289103120 flipcount=6733082 flipbytes=289088424 newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 tenureage=0 
+    3STHSTTYPE     08:45:50:821070000 GMT j9mm.140 -   Tilt ratio: 88 
+    3STHSTTYPE     08:45:49:720989000 GMT j9mm.63 -   Set scavenger backout flag=true 
+    3STHSTTYPE     08:45:48:987417000 GMT j9mm.64 -   LocalGC start: globalcount=137 scavengecount=1889 weakrefs=0 soft=0 phantom=0 finalizers=0 
+    3STHSTTYPE     08:45:48:987403000 GMT j9mm.63 -   Set scavenger backout flag=false 
+    3STHSTTYPE     08:45:48:987106000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=4.811 meanexclusiveaccessms=4.811 threads=0 lastthreadtid=0x0000000000DCC060 beatenbyotherthread=1 
+    3STHSTTYPE     08:45:48:987105000 GMT j9mm.469 -   Allocation failure cycle start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=72 
+    3STHSTTYPE     08:45:48:987090000 GMT j9mm.133 -   Allocation failure start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=72 
+    3STHSTTYPE     08:45:48:981118000 GMT j9mm.100 -   J9AllocateObject() returning NULL! 48 bytes requested for object of class 0000000000DF7A00 from memory space 'Generational' id=00007F39B4082C00 
+    3STHSTTYPE     08:45:48:979681000 GMT j9mm.134 -   Allocation failure end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:45:48:979669000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:45:48:979205000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=1905272424/9663676416 
+    3STHSTTYPE     08:45:48:978713000 GMT j9mm.90 -   GlobalGC collect complete 
+    3STHSTTYPE     08:45:48:977627000 GMT j9mm.137 -   Compact end: bytesmoved=0 
+    3STHSTTYPE     08:45:13:158827000 GMT j9mm.136 -   Compact start: reason=low free space (less than 4%) 
+    3STHSTTYPE     08:45:13:158740000 GMT j9mm.57 -   Sweep end 
+    3STHSTTYPE     08:45:12:550519000 GMT j9mm.56 -   Sweep start 
+    3STHSTTYPE     08:45:12:550504000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0 
+    3STHSTTYPE     08:45:12:550111000 GMT j9mm.60 -   Class unloading start 
+    3STHSTTYPE     08:45:12:550047000 GMT j9mm.55 -   Mark end 
+    3STHSTTYPE     08:45:03:199409000 GMT j9mm.54 -   Mark start 
+    3STHSTTYPE     08:45:03:199246000 GMT j9mm.474 -   GlobalGC start: globalcount=136 
+    3STHSTTYPE     08:45:03:198464000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=1905272424/9663676416 
+    3STHSTTYPE     08:45:03:198002000 GMT j9mm.90 -   GlobalGC collect complete 
+    3STHSTTYPE     08:45:03:197064000 GMT j9mm.137 -   Compact end: bytesmoved=0 
+    3STHSTTYPE     08:44:25:968933000 GMT j9mm.136 -   Compact start: reason=low free space (less than 4%) 
+    3STHSTTYPE     08:44:25:968798000 GMT j9mm.57 -   Sweep end 
+    3STHSTTYPE     08:44:25:325953000 GMT j9mm.56 -   Sweep start 
+    3STHSTTYPE     08:44:25:325927000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0 
+    3STHSTTYPE     08:44:25:323631000 GMT j9mm.60 -   Class unloading start 
+    3STHSTTYPE     08:44:25:321137000 GMT j9mm.55 -   Mark end 
+    3STHSTTYPE     08:44:16:487603000 GMT j9mm.54 -   Mark start 
+    3STHSTTYPE     08:44:16:487458000 GMT j9mm.474 -   GlobalGC start: globalcount=135 
+    3STHSTTYPE     08:44:16:487343000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=0.264 meanexclusiveaccessms=0.264 threads=0 lastthreadtid=0x0000000000E00C60 beatenbyotherthread=0 
+    3STHSTTYPE     08:44:16:487341000 GMT j9mm.469 -   Allocation failure cycle start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=48 
+    3STHSTTYPE     08:44:16:483895000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    3STHSTTYPE     08:44:16:481152000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=1905272424/9663676416 
+    3STHSTTYPE     08:44:16:480663000 GMT j9mm.90 -   GlobalGC collect complete 
+    3STHSTTYPE     08:44:16:479800000 GMT j9mm.137 -   Compact end: bytesmoved=0 
+    3STHSTTYPE     08:43:39:595774000 GMT j9mm.136 -   Compact start: reason=low free space (less than 4%) 
+    3STHSTTYPE     08:43:39:595655000 GMT j9mm.57 -   Sweep end 
+    3STHSTTYPE     08:43:39:017164000 GMT j9mm.56 -   Sweep start 
+    3STHSTTYPE     08:43:39:017149000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0 
+    3STHSTTYPE     08:43:39:017051000 GMT j9mm.60 -   Class unloading start 
+    3STHSTTYPE     08:43:39:016987000 GMT j9mm.55 -   Mark end 
+    3STHSTTYPE     08:43:29:639856000 GMT j9mm.54 -   Mark start 
+    3STHSTTYPE     08:43:29:639708000 GMT j9mm.474 -   GlobalGC start: globalcount=134 
+    3STHSTTYPE     08:43:29:639520000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=0.264 meanexclusiveaccessms=0.264 threads=0 lastthreadtid=0x0000000000E00C60 beatenbyotherthread=0 
+    3STHSTTYPE     08:43:29:639519000 GMT j9mm.469 -   Allocation failure cycle start: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 requestedbytes=48 
+    3STHSTTYPE     08:43:29:639325000 GMT j9mm.470 -   Allocation failure cycle end: newspace=1832822760/2415919104 oldspace=72449664/7247757312 loa=72449664/72476672 
+    NULL     
 
 ### LOCKS
 LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体访问的共享对象。这部分的信息在系统
 出现死锁时尤为关键，死锁是指两个或多个线程互相持有对方需要的锁。这部分中有导致死锁的线程的
 详细信息，可以帮助你确定死锁的根源。
 
-在进行Java dump时，JVM会尝试检测死锁循环。
+在进行Javadump时，JVM会尝试检测死锁循环。
 
 下面的例子展示了典型的没有出现死锁的LOCKS部分信息。为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+
+<font color="red">**flat & inflated object-monitors什么意思**</font>
+
 
     NULL           ------------------------------------------------------------------------
     0SECTION       LOCKS subcomponent dump routine
@@ -555,7 +671,7 @@ ReentrantLock实例
 ### THREADS
 
 THREADS部分提供了虚拟机线程池的概要信息，Java线程、本地线程的详细信息，以及线程调用栈。
-对于应用程序员而言，本部分是Java dump最有用、最常观察的部分之一，可以帮助你定位阻塞、等待的线程。
+对于应用程序员而言，本部分是Javadump最有用、最常观察的部分之一，可以帮助你定位阻塞、等待的线程。
 
 * 3XMTHREADINFO：线程名称，虚拟机线程结构和Java线程对象的地址，Java线程状态和Java线程优先级
 * 3XMJAVALTHREAD：Java线程ID和daemon状态
@@ -564,7 +680,7 @@ THREADS部分提供了虚拟机线程池的概要信息，Java线程、本地线
 * 3XMTHREADINFO3：Java调用栈信息或本地调用栈信息
 * 5XESTACKTRACE：调用堆栈，这部分可以表明是否有方法持有了某个锁
 
-关于Java的Daemon的解释：参考[这里](https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html)
+关于Java的Daemon线程的解释：参考[这里](https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html)
 
 Java线程优先级会根据平台映射至操作系统优先级值。较大的Java线程优先级值表明该线程具有较高的优先级。换言之，该线程会比较低优先级的线程更频繁地运行。
 
@@ -580,7 +696,7 @@ Java线程状态和虚拟机线程状态的值可以是以下
 如果线程已停放(P)、已阻塞(B)、正在等待条件(CW)，那么输出信息中会包含以3XMTHREADBLOCK开头的一行，
 会列出该线程正在等待的资源，以及当前拥有该资源的线程。
 
-为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+为了更加清晰，下面的例子缩短了THREADS这部分的内容，其中...表示被略去的部分
 
     NULL           ------------------------------------------------------------------------
     0SECTION       THREADS subcomponent dump routine

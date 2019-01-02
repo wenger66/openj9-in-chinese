@@ -1,0 +1,1 @@
+[内存管理]([内存管理]{https://www.ibm.com/support/knowledgecenter/zh/SSYKE2_7.0.0/com.ibm.java.win.70.doc/diag/understanding/mm_overview.html?view=kc})
