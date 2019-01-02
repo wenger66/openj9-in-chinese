@@ -2,7 +2,7 @@
 Javadump 也称为 Javacore。Java 转储的缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt
 
 
-## 格式
+## 转储格式
 ### 文件格式
 Javadump 通常是文本格式(.txt)，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
 ### 段落格式
@@ -21,14 +21,14 @@ Javadump 通常是文本格式(.txt)，因此可以通过一般的文本编辑�
 * TI - Title
 * XE - Execution engine
 
-其余部分为信息的概述
+等等
 
-## 内容
+## 转储内容
 Javadump汇总了事件发生时虚拟机的状态，包括大部分虚拟机组件的信息，dump文件由多个部分组成，每个部分提供了不同的信息
 
 感觉段落用英文更加专业，无歧义
 ### TITLE 
-TITLE段落包含了触发dump的事件信息。下面的例子中，你可以看到是vmstop事件在2018/08/30 21:55:47这个时间触发了这个dump
+TITLE部分提供了触发dump的事件信息。下面的例子中，你可以看到是vmstop事件在2018/08/30 21:55:47这个时间触发了这个dump
 
     0SECTION       TITLE subcomponent dump routine
     NULL           ===============================
@@ -43,7 +43,7 @@ TITLE段落包含了触发dump的事件信息。下面的例子中，你可以�
 Dump Event参数可以参考[Dump Events](https://github.com/wenger66/openj9-in-chinese/blob/master/%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%8F%82%E6%95%B0/JVM%20-X%E5%8F%82%E6%95%B0/-Xdump.md#dump%E4%BA%8B%E4%BB%B6)
 
 ### GPINFO
-GPINFO段落包含了运行虚拟机的操作系统的信息。下面的例子，说明虚拟机是运行在Linux系统上的
+GPINFO部分提供了运行虚拟机的操作系统的信息。下面的例子，说明虚拟机是运行在Linux系统上的
 
     NULL           ------------------------------------------------------------------------
     0SECTION       GPINFO subcomponent dump routine
@@ -57,7 +57,7 @@ GPINFO段落包含了运行虚拟机的操作系统的信息。下面的例子�
     1XHERROR2      Register dump section only produced for SIGSEGV, SIGILL or SIGFPE.
     NULL
     
-这段包含的内容可能因为dump的原因不同而多种多样。例如如果是因为gpf事件触发的dump，会用VM Flags记录导致崩溃的库，通过VM Flags这个值
+GPINFO部分包含的内容可能因为dump的原因不同而多种多样。例如如果是因为gpf事件触发的dump，会用VM Flags记录导致崩溃的库，通过VM Flags这个值
 可以追溯到VM的组件。比如下面这段
 
     1XHFLAGS       VM flags:0000000000000000  
@@ -78,7 +78,7 @@ VM Flags的十六进制的数字以MSSSS格式结束。M表示虚拟机，SSSS�
 0000000000000000 (0x00000) 表示崩溃不是由虚拟机造成的
 
 ### ENVINFO
-ENVINFO段落包含了程序运行环境的很多有用信息
+ENVINFO部分提供了程序运行环境的很多有用信息
 * Java版本（1CIJAVAVERSION）
 * OpenJ9虚拟机版本及其组件版本（1CIVMVERSION, 1CIJ9VMVERSION, 1CIJITVERSION, 1CIOMRVERSION, 1CIJCLVERSION）
 * 虚拟机启动时间（1CISTARTTIME）
@@ -409,8 +409,6 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 段内存部分（1STSEGMENT）记录了内部内存，类占用内存，JIT代码高速缓存和JIT数据高速缓存的分段信息，
 包括控制分段的数据结构的地址，分段开始和分段结束的地址，以及分段大小
 
-为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
-
 堆内存部分 (HEAPTYPE)：
 * id - 空间或区域的标识
 * start - 堆区域的启动地址
@@ -429,9 +427,7 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 
 关于堆/段/内部内存/类占用内存的解释：参考[这里](https://github.com/wenger66/openj9-in-chinese/blob/master/垃圾回收/Memory_Manager.md)
 
-<font color="red">**为什么Class Memory占用率那么高**</font>
-
-<font color="red">**为什么JIT Code Cache闲置率那么高**</font>
+为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
 
     NULL           ------------------------------------------------------------------------
     0SECTION       MEMINFO subcomponent dump routine
@@ -599,14 +595,18 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 
 ### LOCKS
 LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体访问的共享对象。这部分的信息在系统
-出现死锁时尤为关键，死锁是指两个或多个线程互相持有对方需要的锁。这部分中有导致死锁的线程的
+出现死锁时尤为关键，死锁是指两个或多个线程互相持有对方需要的锁。LOCKS部分中有导致死锁的线程的
 详细信息，可以帮助你确定死锁的根源。
 
 在进行Javadump时，JVM会尝试检测死锁循环。
+JVM 可以检测由通过同步获取的锁和/或扩展了 java.util.concurrent.locks.AbstractOwnableSynchronizer 类的锁组成的循环
 
-下面的例子展示了典型的没有出现死锁的LOCKS部分信息。为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+Java 语言中的每个对象都有关联的锁定，也称为监控器（Monitor），所以LOCKS部分中大量出现monitor字样。
 
-<font color="red">**flat & inflated object-monitors什么意思**</font>
+*3LKWAITER*这个关键字值得注意，会搜索到一些需要你探究的信息
+
+下面的例子展示了典型的没有出现死锁的LOCKS部分信息。为了更加清晰，
+下面的例子缩短了这部分的内容，其中...表示被略去的部分
 
 
     NULL           ------------------------------------------------------------------------
@@ -693,10 +693,23 @@ Java线程状态和虚拟机线程状态的值可以是以下
 * P – 已停放 – 该线程已因并发 API (java.util.concurrent) 而被停放。如线程池中的线程被使用后再次放回线程池，状态即为Parked
 * B – 已阻塞 – 该线程正在等待获取其他对象当前拥有的锁
 
-如果线程已停放(P)、已阻塞(B)、正在等待条件(CW)，那么输出信息中会包含以3XMTHREADBLOCK开头的一行，
-会列出该线程正在等待的资源，以及当前拥有该资源的线程。
+*3XMTHREADBLOCK* - 如果线程状态为已停放(P)、已阻塞(B)、正在等待条件(CW)，那么输出信息中会包含以*3XMTHREADBLOCK*开头的一行，紧跟着会有
+Blocked on，Parked on，Waiting on，
+会列出该线程正在等待的资源，以及当前拥有该资源的线程。要特别关注这3类线程
+
+*3XMCPUTIME* - 对于 Java 线程和本机线程，输出信息中会包含以 *3XMCPUTIME* 开头的行。该行显示自启动线程
+以来线程所耗用的 CPU 时间（以秒计），即该线程所使用的 CPU 总时间。
+注意：如果从线程池中复用某个 Java 线程，那么不会重置此线程的 CPU 时间，而会继续累计。
+
+*3XMHEAPALLOC* - 对于 Java 线程，输出信息中会包含以 *3XMHEAPALLOC* 开头的行。
+自上次垃圾回收以来该线程所分配的堆字节数。
+
+*1XECTHTYPE* - 对于由异常 throw、catch、uncaught 和 systhrow 事件
+或由 com.ibm.jvm.Dump API 触发的 Javadump，会在 THREADS 部分的结尾处输出包含*1XECTHTYPE*的行。
+这些行显示dump时的触发点。
 
 为了更加清晰，下面的例子缩短了THREADS这部分的内容，其中...表示被略去的部分
+
 
     NULL           ------------------------------------------------------------------------
     0SECTION       THREADS subcomponent dump routine
@@ -766,6 +779,18 @@ Java线程状态和虚拟机线程状态的值可以是以下
     2XMTHDCATEGORY +--Application: 0.009269000 secs
     NULL
     
+    
+在发生Javadump时，所有运行Java代码的线程状态可能是可运行（R）状态或者正在等待条件（CW）状态
+
+要特别关注已停放(P)、已阻塞(B)、正在等待条件(CW)这三类状态的线程
+要了解哪些资源拥有处于停放、等待或阻塞状态的线程，
+可以查找以 *3XMTHREADBLOCK* 开始的行。 该行还可能指示哪个线程拥有该资源。
+
+#### Owned by: <unknown>
+可以扩展并使用 AbstractOwnableSynchronizer 类以在 Javadump中提供信息，以便帮助诊断锁的问题。
+否则很可能会显示为unknown
+
+     
 #### 阻塞线程
 
 以下是 Javadump 的 THREADS 部分中的输出样例，
@@ -803,10 +828,157 @@ Javadump 的 LOCKS 部分显示有关正在等待的监视器的对应输出
     2LKMONINUSE      sys_mon_t:0x00A0ADB8 infl_mon_t: 0x00A0ADF4:
     3LKMONOBJECT       java/lang/String@0x68E63E60: owner "main" (0x6B3F9A00), entry count 1
     3LKNOTIFYQ            Waiting to be notified:
-    3LKWAITNOTIFY            "Thread-5" (0x00503D00)、
+    3LKWAITNOTIFY            "Thread-5" (0x00503D00)
     
 
+### HOOK
+HOOK 部分提供了用于内部性能诊断的 JVM 内部事件回调的详细信息。此部分列出了多个回调接口，每个接口都包含了独立的
+回调事件。
+
+下面的例子中显示了J9VMHookInterface接口的数据，包括最近一次调用和耗时最长的调用的信息，包括：
+调用代码位置和代码行，开始时间，调用耗时。
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       HOOK subcomponent dump routine
+    NULL           ==============================
+    1HKINTERFACE   MM_OMRHookInterface
+    NULL           ------------------------------------------------------------------------
+    1HKINTERFACE   MM_PrivateHookInterface
+    NULL           ------------------------------------------------------------------------
+    1HKINTERFACE   MM_HookInterface
+    NULL           ------------------------------------------------------------------------
+    1HKINTERFACE   J9VMHookInterface
+    NULL           ------------------------------------------------------------------------
+    2HKEVENTID     1
+    3HKCALLCOUNT       18
+    3HKLAST            Last Callback
+    4HKCALLSITE           trcengine.c:392
+    4HKSTARTTIME          Start Time: 2018-08-30T21:55:47.601
+    4HKDURATION           DurationMs: 0
+    3HKLONGST          Longest Callback
+    4HKCALLSITE           trcengine.c:392
+    4HKSTARTTIME          Start Time: 2018-08-30T21:55:47.460
+    4HKDURATION           DurationMs: 1
+    NULL
+    ...
+    1HKINTERFACE   J9VMZipCachePoolHookInterface
+    NULL           ------------------------------------------------------------------------
+    1HKINTERFACE   J9JITHookInterface
+    NULL           ------------------------------------------------------------------------
+    2HKEVENTID     3
+    3HKCALLCOUNT       65
+    3HKLAST            Last Callback
+    4HKCALLSITE           ../common/mgmtinit.c:191
+    4HKSTARTTIME          Start Time: 2018-08-30T21:55:47.601
+    4HKDURATION           DurationMs: 0
+    3HKLONGST          Longest Callback
+    4HKCALLSITE           ../common/mgmtinit.c:191
+    4HKSTARTTIME          Start Time: 2018-08-30T21:55:47.486
+    4HKDURATION           DurationMs: 0
+    ...
+    NULL
+    
+### SHARED CLASSES
+
+OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动时间，参考[这里](https://www.ibm.com/developerworks/cn/java/j-class-sharing-openj9/index.html)
+
+如果共享类特性在运行期启用，SHARED CLASSES部分将提供创建共享类缓存的配置信息，共享类缓存的大小和内容的概要信息
+
+下面的例子中，创建共享类缓存时的配置包括：
+*类调试区域(Class Debug Area) - -Xnolinenumbers建议虚拟机不要加载任何类的调试信息，-Xnolinenumbers = false说明加载了类调试信息
+*字节码工具(Byte code instrumentation) - 默认启用BCI，共享类特性支持与运行时字节码修改进行集成
+*保存类路径 - 默认启用保存类路径
+====================================================================================
+
+    NULL
+    1SCLTEXTCRTW   Cache Created With
+    NULL           ------------------
+    NULL
+    2SCLTEXTXNL        -Xnolinenumbers       = false
+    2SCLTEXTBCI        BCI Enabled           = true
+    2SCLTEXTBCI        Restrict Classpaths   = false
+    NULL
 
 
+缓存概要信息包括了类缓存大小 (*2SCLTEXTCSZ*) 是16776608个字节, 
+弹性？最大缓存大小 (*2SCLTEXTSMB*) 也是16776608个字节, 
+空闲空间大小(*2SCLTEXTFRB*)是12691668个字节，
+类调试区域(*2SCLTEXTDAS*)是1331200个字节，11%的空间已使用。
+
+    NULL
+    1SCLTEXTCSUM   Cache Summary
+    NULL           ------------------
+    NULL
+    2SCLTEXTNLC        No line number content                    = false
+    2SCLTEXTLNC        Line number content                       = true
+    NULL
+    2SCLTEXTRCS        ROMClass start address                    = 0x00007F423061C000
+    2SCLTEXTRCE        ROMClass end address                      = 0x00007F42307B9A28
+    2SCLTEXTMSA        Metadata start address                    = 0x00007F42313D42FC
+    2SCLTEXTCEA        Cache end address                         = 0x00007F4231600000
+    2SCLTEXTRTF        Runtime flags                             = 0x00102001ECA6028B
+    2SCLTEXTCGN        Cache generation                          = 35
+    NULL
+    2SCLTEXTCSZ        Cache size                                = 16776608
+    2SCLTEXTSMB        Softmx bytes                              = 16776608
+    2SCLTEXTFRB        Free bytes                                = 12691668
+    2SCLTEXTRCB        ROMClass bytes                            = 1694248
+    2SCLTEXTAOB        AOT code bytes                            = 0
+    2SCLTEXTADB        AOT data bytes                            = 0
+    2SCLTEXTAHB        AOT class hierarchy bytes                 = 32
+    2SCLTEXTATB        AOT thunk bytes                           = 0
+    2SCLTEXTARB        Reserved space for AOT bytes              = -1
+    2SCLTEXTAMB        Maximum space for AOT bytes               = -1
+    2SCLTEXTJHB        JIT hint bytes                            = 308
+    2SCLTEXTJPB        JIT profile bytes                         = 2296
+    2SCLTEXTJRB        Reserved space for JIT data bytes         = -1
+    2SCLTEXTJMB        Maximum space for JIT data bytes          = -1
+    2SCLTEXTNOB        Java Object bytes                         = 0
+    2SCLTEXTZCB        Zip cache bytes                           = 919328
+    2SCLTEXTRWB        ReadWrite bytes                           = 114080
+    2SCLTEXTJCB        JCL data bytes                            = 0
+    2SCLTEXTBDA        Byte data bytes                           = 0
+    2SCLTEXTMDA        Metadata bytes                            = 23448
+    2SCLTEXTDAS        Class debug area size                     = 1331200
+    2SCLTEXTDAU        Class debug area % used                   = 11%
+    2SCLTEXTDAN        Class LineNumberTable bytes               = 156240
+    2SCLTEXTDAV        Class LocalVariableTable bytes            = 0
+    NULL
+    2SCLTEXTNRC        Number ROMClasses                         = 595
+    2SCLTEXTNAM        Number AOT Methods                        = 0
+    2SCLTEXTNAD        Number AOT Data Entries                   = 0
+    2SCLTEXTNAH        Number AOT Class Hierarchy                = 1
+    2SCLTEXTNAT        Number AOT Thunks                         = 0
+    2SCLTEXTNJH        Number JIT Hints                          = 14
+    2SCLTEXTNJP        Number JIT Profiles                       = 20
+    2SCLTEXTNCP        Number Classpaths                         = 1
+    2SCLTEXTNUR        Number URLs                               = 0
+    2SCLTEXTNTK        Number Tokens                             = 0
+    2SCLTEXTNOJ        Number Java Objects                       = 0
+    2SCLTEXTNZC        Number Zip Caches                         = 5
+    2SCLTEXTNJC        Number JCL Entries                        = 0
+    2SCLTEXTNST        Number Stale classes                      = 0
+    2SCLTEXTPST        Percent Stale classes                     = 0%
+    NULL
+    2SCLTEXTCPF        Cache is 24% full
+    NULL
+    
+    
+*2SCLTEXTCMDT*开头的行显示了共享类缓存的名称和地址,CR表明缓存是64位压缩的引用缓存  
+
+    NULL
+    1SCLTEXTCMST   Cache Memory Status
+    NULL           ------------------
+    1SCLTEXTCNTD       Cache Name                    Feature                  Memory type              Cache path
+    NULL
+    2SCLTEXTCMDT       sharedcc_doc-javacore         CR                       Memory mapped file       /tmp/javasharedresources/C290M4F1A64P_sharedcc_doc-javacore_G35
+    NULL
+    1SCLTEXTCMST   Cache Lock Status
+    NULL           ------------------
+    1SCLTEXTCNTD       Lock Name                     Lock type                TID owning lock
+    NULL
+    2SCLTEXTCWRL       Cache write lock              File lock                Unowned
+    2SCLTEXTCRWL       Cache read/write lock         File lock                Unowned
+    NULL
 
 
