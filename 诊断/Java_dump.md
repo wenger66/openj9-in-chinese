@@ -981,4 +981,44 @@ OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动�
     2SCLTEXTCRWL       Cache read/write lock         File lock                Unowned
     NULL
 
+### CLASSES
+CLASSES部分提供了ClassLoader的信息。第一部分提供了每个ClassLoader的概要信息（*2CLTEXTCLLOADER*），包括
+加载的库数量和类数量。接下来有更多的关于加载库的详细信息（*1CLTEXTCLLIB*）和加载类的详细信息（*1CLTEXTCLLO*）
 
+下面的例子中，你可以看见java/lang/InternalAnonymousClassLoader加载了2个类，分别是
+jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x0000000001030F00)
+和jdk/internal/loader/BuiltinClassLoader$$Lambda$1/00000000F00D2460(0x0000000001018A00)
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       CLASSES subcomponent dump routine
+    NULL           =================================
+    1CLTEXTCLLOS    Classloader summaries
+    1CLTEXTCLLSS        12345678: 1=primordial,2=extension,3=shareable,4=middleware,5=system,6=trusted,7=application,8=delegating
+    2CLTEXTCLLOADER     p---st-- Loader *System*(0x00000000FFE1D258)
+    3CLNMBRLOADEDLIB        Number of loaded libraries 5
+    3CLNMBRLOADEDCL         Number of loaded classes 638
+    2CLTEXTCLLOADER     -x--st-- Loader jdk/internal/loader/ClassLoaders$PlatformClassLoader(0x00000000FFE1D4F0), Parent *none*(0x0000000000000000)
+    3CLNMBRLOADEDLIB        Number of loaded libraries 0
+    3CLNMBRLOADEDCL         Number of loaded classes 0
+    2CLTEXTCLLOADER     ----st-- Loader java/lang/InternalAnonymousClassLoader(0x00000000FFE1DFD0), Parent *none*(0x0000000000000000)
+    3CLNMBRLOADEDLIB        Number of loaded libraries 0
+    3CLNMBRLOADEDCL         Number of loaded classes 2
+    2CLTEXTCLLOADER     -----ta- Loader jdk/internal/loader/ClassLoaders$AppClassLoader(0x00000000FFE1DAD0), Parent jdk/internal/loader/ClassLoaders$PlatformClassLoader(0x00000000FFE1D4F0)
+    3CLNMBRLOADEDLIB        Number of loaded libraries 0
+    3CLNMBRLOADEDCL         Number of loaded classes 0
+    1CLTEXTCLLIB    ClassLoader loaded libraries
+    2CLTEXTCLLIB        Loader *System*(0x00000000FFE1D258)
+    3CLTEXTLIB              /home/me/openj9-openjdk-jdk9/build/linux-x86_64-normal-server-release/images/jdk/lib/compressedrefs/jclse9_29
+    3CLTEXTLIB              /home/me/openj9-openjdk-jdk9/build/linux-x86_64-normal-server-release/images/jdk/lib/java
+    3CLTEXTLIB              /home/me/openj9-openjdk-jdk9/build/linux-x86_64-normal-server-release/images/jdk/lib/compressedrefs/j9jit29
+    3CLTEXTLIB              /home/me/openj9-openjdk-jdk9/build/linux-x86_64-normal-server-release/images/jdk/lib/zip
+    3CLTEXTLIB              /home/me/openj9-openjdk-jdk9/build/linux-x86_64-normal-server-release/images/jdk/lib/nio
+    1CLTEXTCLLOD    ClassLoader loaded classes
+    2CLTEXTCLLOAD       Loader *System*(0x00000000FFE1D258)
+    3CLTEXTCLASS            [Ljava/lang/Thread$State;(0x0000000001056400)
+    ...
+    2CLTEXTCLLOAD       Loader jdk/internal/loader/ClassLoaders$PlatformClassLoader(0x00000000FFE1D4F0)
+    2CLTEXTCLLOAD       Loader java/lang/InternalAnonymousClassLoader(0x00000000FFE1DFD0)
+    3CLTEXTCLASS            jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x0000000001030F00)
+    3CLTEXTCLASS            jdk/internal/loader/BuiltinClassLoader$$Lambda$1/00000000F00D2460(0x0000000001018A00)
+    2CLTEXTCLLOAD       Loader jdk/internal/loader/ClassLoaders$AppClassLoader(0x00000000FFE1DAD0)
