@@ -1,4 +1,4 @@
-# Java转储 (Javadump)
+# Java dump
 Javadump 也称为 Javacore。Java 转储的缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt
 
 
