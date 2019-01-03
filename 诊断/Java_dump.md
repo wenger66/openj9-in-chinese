@@ -1022,3 +1022,250 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     3CLTEXTCLASS            jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x0000000001030F00)
     3CLTEXTCLASS            jdk/internal/loader/BuiltinClassLoader$$Lambda$1/00000000F00D2460(0x0000000001018A00)
     2CLTEXTCLLOAD       Loader jdk/internal/loader/ClassLoaders$AppClassLoader(0x00000000FFE1DAD0)
+
+## 实战
+后续会根据团队遇到的问题更新，这是学习使用Javadump文件非常好的素材
+
+### GPF错误
+这个场景中，Java应用程序由于GPF（General Protection Fault）错误崩溃，自动进行了Java转储
+
+首先从TITLE部分观察到Javadump的原因是GPF
+
+
+    0SECTION       TITLE subcomponent dump routine
+    NULL           ===============================
+    1TICHARSET     UTF-8
+    1TISIGINFO     Dump Event "gpf" (00002000) received
+    1TIDATETIME    Date: 2018/09/24 at 15:18:03:115
+    1TINANOTIME    System nanotime: 4498949283020796
+    1TIFILENAME    Javacore filename:    /home/test/JNICrasher/javacore.20180924.151801.29399.0002.txt
+    1TIREQFLAGS    Request Flags: 0x81 (exclusive+preempt)
+    1TIPREPSTATE   Prep State: 0x100 (trace_disabled)
+    1TIPREPINFO    Exclusive VM access not taken: data may not be consistent across javacore sections
+    
+要定位这个问题，需要找到是哪个线程引起的GPF错误。在THREADS部分，  Current thread关键字指出了在应用崩溃时
+正在运行的线程。下面是THREADS部分的详细信息  
+  
+    NULL           ------------------------------------------------------------------------
+    0SECTION       THREADS subcomponent dump routine
+    NULL           =================================
+    NULL
+    1XMPOOLINFO    JVM Thread pool info:
+    2XMPOOLTOTAL       Current total number of pooled threads: 16
+    2XMPOOLLIVE        Current total number of live threads: 15
+    2XMPOOLDAEMON      Current total number of live daemon threads: 14
+    NULL            
+    1XMCURTHDINFO  Current thread
+    3XMTHREADINFO      "main" J9VMThread:0xB6B60E00, omrthread_t:0xB6B049D8, java/lang/Thread:0xB55444D0, state:R, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x1, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x72D8, native priority:0x5, native policy:UNKNOWN, vmstate:R, vm thread flags:0x00000000)
+    3XMTHREADINFO2            (native stack address range from:0xB6CE3000, to:0xB74E4000, size:0x801000)
+    3XMCPUTIME               CPU usage total: 0.319865924 secs, current category="Application"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=778008 (0xBDF18)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at JNICrasher.doSomethingThatCrashes(Native Method)
+    4XESTACKTRACE                at JNICrasher.main(JNICrasher.java:7)
+    3XMTHREADINFO3           Native callstack:
+    4XENATIVESTACK               (0xB6C6F663 [libj9prt29.so+0x3b663])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB6C6F1CE [libj9prt29.so+0x3b1ce])
+    4XENATIVESTACK               (0xB6C6F2C6 [libj9prt29.so+0x3b2c6])
+    4XENATIVESTACK               (0xB6C6ED93 [libj9prt29.so+0x3ad93])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB6C6ED07 [libj9prt29.so+0x3ad07])
+    4XENATIVESTACK               (0xB6C6AA3D [libj9prt29.so+0x36a3d])
+    4XENATIVESTACK               (0xB6C6C3A4 [libj9prt29.so+0x383a4])
+    4XENATIVESTACK               (0xB667FA19 [libj9dmp29.so+0xfa19])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB66878CF [libj9dmp29.so+0x178cf])
+    4XENATIVESTACK               (0xB6688083 [libj9dmp29.so+0x18083])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB6680C0D [libj9dmp29.so+0x10c0d])
+    4XENATIVESTACK               (0xB667F9D7 [libj9dmp29.so+0xf9d7])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB668B02F [libj9dmp29.so+0x1b02f])
+    4XENATIVESTACK               (0xB668B4D3 [libj9dmp29.so+0x1b4d3])
+    4XENATIVESTACK               (0xB66740F1 [libj9dmp29.so+0x40f1])
+    4XENATIVESTACK               (0xB66726FA [libj9dmp29.so+0x26fa])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB66726A9 [libj9dmp29.so+0x26a9])
+    4XENATIVESTACK               (0xB6676AE4 [libj9dmp29.so+0x6ae4])
+    4XENATIVESTACK               (0xB668D75A [libj9dmp29.so+0x1d75a])
+    4XENATIVESTACK               (0xB6A28DD4 [libj9vm29.so+0x81dd4])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB6A289EE [libj9vm29.so+0x819ee])
+    4XENATIVESTACK               (0xB6A29A40 [libj9vm29.so+0x82a40])
+    4XENATIVESTACK               (0xB6C52B6A [libj9prt29.so+0x1eb6a])
+    4XENATIVESTACK               __kernel_rt_sigreturn+0x0 (0xB7747410)
+    4XENATIVESTACK               (0xB75330B6 [libffi29.so+0x50b6])
+    4XENATIVESTACK               ffi_raw_call+0xad (0xB7531C53 [libffi29.so+0x3c53])
+    4XENATIVESTACK               (0xB69BE4AB [libj9vm29.so+0x174ab])
+    4XENATIVESTACK               (0xB6A665BC [libj9vm29.so+0xbf5bc])
+    4XENATIVESTACK               (0xB6A15552 [libj9vm29.so+0x6e552])
+    4XENATIVESTACK               (0xB6A30894 [libj9vm29.so+0x89894])
+    4XENATIVESTACK               (0xB6A6F169 [libj9vm29.so+0xc8169])
+    4XENATIVESTACK               (0xB6C52F6E [libj9prt29.so+0x1ef6e])
+    4XENATIVESTACK               (0xB6A6F1FA [libj9vm29.so+0xc81fa])
+    4XENATIVESTACK               (0xB6A30994 [libj9vm29.so+0x89994])
+    4XENATIVESTACK               (0xB6A2CE4C [libj9vm29.so+0x85e4c])
+    4XENATIVESTACK               (0xB770487D [libjli.so+0x787d])
+    4XENATIVESTACK               (0xB7719F72 [libpthread.so.0+0x6f72])
+    4XENATIVESTACK               clone+0x5e (0xB763543E [libc.so.6+0xee43e])
+    
+
+从以上详细信息可以看出，崩溃时正在运行的线程是java/lang/Thread，可以看到Java调用栈和本地调用栈。
+为了在应用程序中模拟崩溃，这个例子调用了一个JNI的方法JNIcrasher，本地调用栈显示了失败时的部分信息，
+但没有包含任何可以帮助你定位错误的方法名，因此你可以继续使用Systemdump，使用
+ Dump viewer工具打开Systemdump文件，使用info thread命令打印这个线程的Java调用栈和本地调用栈。
+ 所以一般Systemdump可以用来辅助Javadump定位问题。
+ 
+ 
+### OOM错误
+
+这个场景中，Java应用程序耗尽了内存，导致OutOfMemoryError，自动进行了Javadump
+
+首先从TITLE部分观察到Javadump的原因是systhrow，systhrow的详细原因是java/lang/OutOfMemoryError
+
+    0SECTION       TITLE subcomponent dump routine
+    NULL           ===============================
+    1TICHARSET     UTF-8
+    1TISIGINFO     Dump Event "systhrow" (00040000) Detail "java/lang/OutOfMemoryError" "Java heap space" received
+    1TIDATETIME    Date: 2018/09/14 at 15:29:42:709
+    1TINANOTIME    System nanotime: 3635648876608448
+    1TIFILENAME    Javacore filename:    /home/cheesemp/test/javacore.20180914.152929.18885.0003.txt
+    1TIREQFLAGS    Request Flags: 0x81 (exclusive+preempt)
+    1TIPREPSTATE   Prep State: 0x104 (exclusive_vm_access+trace_disabled)
+    
+接下来可以观察MEMINFO部分，这部分可以观察到分配了多少堆内存用于存储对象（*1STHEAPTYPE*），已经使用了多少，
+仍空闲了多少。最简单的解决你问题的方法就是给你的应用程序设置一个更大的堆内存
+
+如果你不清楚设置多大的堆内存才合适，你可以观察ENVINFO部分，这部分提供了应用程序的启动参数。
+查找*1CIUSERARGS*关键字，Java堆大小通过-Xmx参数设置，如果这个参数还没有设置，那么会使用默认值。
+
+这个场景中，并不是通过调大堆内存来解决问题的。我们继续观察MEMINFO部分
+
+ 
+    0SECTION       MEMINFO subcomponent dump routine
+    NULL           =================================
+    NULL
+    1STHEAPTYPE    Object Memory
+    NULL           id         start      end        size       space/region
+    1STHEAPSPACE   0xB6B49D20     --         --         --     Generational
+    1STHEAPREGION  0xB6B4A078 0x95750000 0xB5470000 0x1FD20000 Generational/Tenured Region
+    1STHEAPREGION  0xB6B49F10 0xB5470000 0xB54C0000 0x00050000 Generational/Nursery Region
+    1STHEAPREGION  0xB6B49DA8 0xB54C0000 0xB5750000 0x00290000 Generational/Nursery Region
+    NULL
+    1STHEAPTOTAL   Total memory:         536870912 (0x20000000)
+    1STHEAPINUSE   Total memory in use:  302603160 (0x12095B98)
+    1STHEAPFREE    Total memory free:    234267752 (0x0DF6A468)
+    
+这部分显示只有56%的堆内存被使用，因此建议应用程序进行调优，所以需要观察是哪个线程导致的OOM，
+这个线程正在试图干什么。和上一个场景类似，你可以观察THREADS部分的当前线程，下面是Current Thread的输出  
+ 
+    0SECTION       THREADS subcomponent dump routine
+    NULL           =================================
+    NULL
+    1XMPOOLINFO    JVM Thread pool info:
+    2XMPOOLTOTAL       Current total number of pooled threads: 16
+    2XMPOOLLIVE        Current total number of live threads: 16
+    2XMPOOLDAEMON      Current total number of live daemon threads: 15
+    NULL
+    1XMCURTHDINFO  Current thread
+    3XMTHREADINFO      "main" J9VMThread:0xB6B60C00, omrthread_t:0xB6B049D8, java/lang/Thread:0x95764520, state:R, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x1, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x49C6, native priority:0x5, native policy:UNKNOWN, vmstate:R, vm thread flags:0x00001020)
+    3XMTHREADINFO2            (native stack address range from:0xB6CB5000, to:0xB74B6000, size:0x801000)
+    3XMCPUTIME               CPU usage total: 8.537823831 secs, current category="Application"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at java/lang/StringBuffer.ensureCapacityImpl(StringBuffer.java:696)
+    4XESTACKTRACE                at java/lang/StringBuffer.append(StringBuffer.java:486(Compiled Code))
+    5XESTACKTRACE                   (entered lock: java/lang/StringBuffer@0x957645B8, entry count: 1)
+    4XESTACKTRACE                at java/lang/StringBuffer.append(StringBuffer.java:428(Compiled Code))
+    4XESTACKTRACE                at HeapBreaker.main(HeapBreaker.java:34(Compiled Code))
+    3XMTHREADINFO3           Native callstack:
+    4XENATIVESTACK               (0xB6C535B3 [libj9prt29.so+0x3b5b3])
+    4XENATIVESTACK               (0xB6C36F3E [libj9prt29.so+0x1ef3e])
+    4XENATIVESTACK               (0xB6C5311E [libj9prt29.so+0x3b11e])
+    4XENATIVESTACK               (0xB6C53216 [libj9prt29.so+0x3b216])
+    4XENATIVESTACK               (0xB6C52CE3 [libj9prt29.so+0x3ace3])
+    4XENATIVESTACK               (0xB6C36F3E [libj9prt29.so+0x1ef3e])
+    4XENATIVESTACK               (0xB6C52C57 [libj9prt29.so+0x3ac57])
+    4XENATIVESTACK               (0xB6C4E9CD [libj9prt29.so+0x369cd])
+    4XENATIVESTACK               (0xB6C502FA [libj9prt29.so+0x382fa])
+    
+为了模拟Java的OOM，这个例子的应用程序使用一个死循环不断的在StringBuffer对象上追加字符串。
+Java调用堆显示出HeapBreaker的main程序在不断通过java/lang/StringGuffer.append方法追加字符串，
+某次追加时java/lang/StringBuffer.ensureCapacityImpl()这个方法抛出了OOM错误。
+
+StringBuffer对象底层是char数组，当达到数组的最大容量时，当前数组中的内容就要拷贝到一个新的，容量更大的数组中。
+新建一个更大的数组就是在StringBuffer.ensureCapacity()方法中实现的，方法运行过程中，难免要需要旧数组2倍的内存空间，
+也就是在这个点，内存占用超过Java堆所有的剩余空间，导致了OOM。
+
+MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们来观察GC History部分(*1STGCHTYPE*)，
+这部分会显示触发GC活动的请求。下面的例子中，你可以观察到一次大的内存分配请求(关键字requestedbytes，请求大小=576M)直接导致了全局GC。
+如果GC后仍不能释放足够多的空间以响应这个请求，那么也会导致OOM。
+
+
+    1STGCHTYPE     GC History  
+    3STHSTTYPE     14:29:29:580239000 GMT j9mm.101 -   J9AllocateIndexableObject() returning NULL! 0 bytes requested for object of class B6BBC300 from memory space 'Generational' id=B6B49D20
+    3STHSTTYPE     14:29:29:579916000 GMT j9mm.134 -   Allocation failure end: newspace=2686912/3014656 oldspace=231597224/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:579905000 GMT j9mm.470 -   Allocation failure cycle end: newspace=2686912/3014656 oldspace=231597224/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:579859000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=234284136/536870912
+    3STHSTTYPE     14:29:29:579807000 GMT j9mm.90 -   GlobalGC collect complete
+    3STHSTTYPE     14:29:29:579776000 GMT j9mm.137 -   Compact end: bytesmoved=301989896
+    3STHSTTYPE     14:29:29:313899000 GMT j9mm.136 -   Compact start: reason=compact to meet allocation
+    3STHSTTYPE     14:29:29:313555000 GMT j9mm.57 -   Sweep end
+    3STHSTTYPE     14:29:29:310772000 GMT j9mm.56 -   Sweep start
+    3STHSTTYPE     14:29:29:310765000 GMT j9mm.94 -   Class unloading end: classloadersunloaded=0 classesunloaded=0
+    3STHSTTYPE     14:29:29:310753000 GMT j9mm.60 -   Class unloading start
+    3STHSTTYPE     14:29:29:310750000 GMT j9mm.55 -   Mark end
+    3STHSTTYPE     14:29:29:306013000 GMT j9mm.54 -   Mark start
+    3STHSTTYPE     14:29:29:305957000 GMT j9mm.474 -   GlobalGC start: globalcount=9
+    3STHSTTYPE     14:29:29:305888000 GMT j9mm.475 -   GlobalGC end: workstackoverflow=0 overflowcount=0 memory=234284136/536870912
+    3STHSTTYPE     14:29:29:305837000 GMT j9mm.90 -   GlobalGC collect complete
+    3STHSTTYPE     14:29:29:305808000 GMT j9mm.137 -   Compact end: bytesmoved=189784
+    3STHSTTYPE     14:29:29:298042000 GMT j9mm.136 -   Compact start: reason=compact to meet allocation
+    3STHSTTYPE     14:29:29:297695000 GMT j9mm.57 -   Sweep end
+    3STHSTTYPE     14:29:29:291696000 GMT j9mm.56 -   Sweep start
+    3STHSTTYPE     14:29:29:291692000 GMT j9mm.55 -   Mark end
+    3STHSTTYPE     14:29:29:284994000 GMT j9mm.54 -   Mark start
+    3STHSTTYPE     14:29:29:284941000 GMT j9mm.474 -   GlobalGC start: globalcount=8
+    3STHSTTYPE     14:29:29:284916000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=0.016 meanexclusiveaccessms=0.016 threads=0 lastthreadtid=0xB6B61100 beatenbyotherthread=0
+    3STHSTTYPE     14:29:29:284914000 GMT j9mm.469 -   Allocation failure cycle start: newspace=2678784/3014656 oldspace=80601248/533856256 loa=5338112/5338112 requestedbytes=603979784
+    3STHSTTYPE     14:29:29:284893000 GMT j9mm.470 -   Allocation failure cycle end: newspace=2678784/3014656 oldspace=80601248/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:284858000 GMT j9mm.560 -   LocalGC end: rememberedsetoverflow=0 causedrememberedsetoverflow=0 scancacheoverflow=0 failedflipcount=0 failedflipbytes=0 failedtenurecount=0 failedtenurebytes=0 flipcount=2 flipbytes=64 newspace=2678784/3014656 oldspace=80601248/533856256 loa=5338112/5338112 tenureage=0
+    3STHSTTYPE     14:29:29:284140000 GMT j9mm.140 -   Tilt ratio: 89
+    3STHSTTYPE     14:29:29:283160000 GMT j9mm.64 -   LocalGC start: globalcount=8 scavengecount=335 weakrefs=0 soft=0 phantom=0 finalizers=0
+    3STHSTTYPE     14:29:29:283123000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=0.016 meanexclusiveaccessms=0.016 threads=0 lastthreadtid=0xB6B61100 beatenbyotherthread=0
+    3STHSTTYPE     14:29:29:283120000 GMT j9mm.469 -   Allocation failure cycle start: newspace=753616/3014656 oldspace=80601248/533856256 loa=5338112/5338112 requestedbytes=603979784
+    3STHSTTYPE     14:29:29:283117000 GMT j9mm.133 -   Allocation failure start: newspace=753616/3014656 oldspace=80601248/533856256 loa=5338112/5338112 requestedbytes=603979784
+    3STHSTTYPE     14:29:29:269762000 GMT j9mm.134 -   Allocation failure end: newspace=2686928/3014656 oldspace=80601248/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:269751000 GMT j9mm.470 -   Allocation failure cycle end: newspace=2686976/3014656 oldspace=80601248/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:269718000 GMT j9mm.560 -   LocalGC end: rememberedsetoverflow=0 causedrememberedsetoverflow=0 scancacheoverflow=0 failedflipcount=0 failedflipbytes=0 failedtenurecount=0 failedtenurebytes=0 flipcount=0 flipbytes=0 newspace=2686976/3014656 oldspace=80601248/533856256 loa=5338112/5338112 tenureage=0
+    3STHSTTYPE     14:29:29:268981000 GMT j9mm.140 -   Tilt ratio: 89
+    3STHSTTYPE     14:29:29:268007000 GMT j9mm.64 -   LocalGC start: globalcount=8 scavengecount=334 weakrefs=0 soft=0 phantom=0 finalizers=0
+    3STHSTTYPE     14:29:29:267969000 GMT j9mm.135 -   Exclusive access: exclusiveaccessms=0.016 meanexclusiveaccessms=0.016 threads=0 lastthreadtid=0xB6B61100 beatenbyotherthread=0
+    3STHSTTYPE     14:29:29:267966000 GMT j9mm.469 -   Allocation failure cycle start: newspace=0/3014656 oldspace=80601248/533856256 loa=5338112/5338112 requestedbytes=48
+    3STHSTTYPE     14:29:29:267963000 GMT j9mm.133 -   Allocation failure start: newspace=0/3014656 oldspace=80601248/533856256 loa=5338112/5338112 requestedbytes=48
+    3STHSTTYPE     14:29:29:249015000 GMT j9mm.134 -   Allocation failure end: newspace=2686928/3014656 oldspace=80601248/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:249003000 GMT j9mm.470 -   Allocation failure cycle end: newspace=2686976/3014656 oldspace=80601248/533856256 loa=5338112/5338112
+    3STHSTTYPE     14:29:29:248971000 GMT j9mm.560 -   LocalGC end: rememberedsetoverflow=0 causedrememberedsetoverflow=0 scancacheoverflow=0 failedflipcount=0 failedflipbytes=0 failedtenurecount=0 failedtenurebytes=0 flipcount=0 flipbytes=0 newspace=2686976/3014656 oldspace=80601248/533856256 loa=5338112/5338112 tenureage=0
+    
+
+尽管这个例子中是Java代码故意造成的OOM，但实际应用中，类似的内存分配问题常用发生，例如在处理包含大量数据的XML文件时。
+
+定位OOM问题接下来的步骤是打开Systemdump文件。可以使用MAT(Eclipse Memory Analyzer tool)
+打开dump文件，查找StringBuffer对象，可以找到更多导致OOM的线索。最普遍的场景是，可以观察到相同的字符串
+一遍又一遍的创建，那可能会让你联想到代码存在死循环。
+
+注意：如果你使用MAT去分析Systemdump文件，你必须在Eclipse中
+安装DTFJ(Diagnostic Tool Framework for Java)插件，可以通过下面的菜单安装DTFJ
+ 
+    Help > Install New Software > Work with "IBM Diagnostic Tool Framework for Java" >  
+  
+与之前的场景不同，如果你的应用发生了OOM，并且从MEMIFO部分观察到只有很少的堆内存空闲，那么，当前是哪个线程
+导致的OOM就不重要了，任何线程都可能由于被调度到并分配内存而导致应用的OOM。这种情况下，你可能需要增大堆内存
+或者通过调优应用来解决。
+
+
