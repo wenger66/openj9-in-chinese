@@ -1137,7 +1137,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     1TIPREPSTATE   Prep State: 0x104 (exclusive_vm_access+trace_disabled)
     
 接下来可以观察MEMINFO部分，这部分可以观察到分配了多少堆内存用于存储对象（*1STHEAPTYPE*），已经使用了多少，
-仍空闲了多少。最简单的解决你问题的方法就是给你的应用程序设置一个更大的堆内存
+仍空闲了多少。最简单的解决问题的方法就是给你的应用程序设置一个更大的堆内存
 
 如果你不清楚设置多大的堆内存才合适，你可以观察ENVINFO部分，这部分提供了应用程序的启动参数。
 查找*1CIUSERARGS*关键字，Java堆大小通过-Xmx参数设置，如果这个参数还没有设置，那么会使用默认值。
