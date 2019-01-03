@@ -1,4 +1,4 @@
-# [Javadump](https://github.com/wenger66/openj9-in-chinese/blob/master/诊断/Java_dump.md)
+# Java转储 (Javadump)
 Javadump 也称为 Javacore。Java 转储的缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt
 
 
