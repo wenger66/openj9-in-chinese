@@ -1407,3 +1407,158 @@ so these structures can be allocated only at 32-bit addresses. However,
 另一个导致本地OOM错误的常见原因是类重复加载，很可能类在堆外也被加载了一遍。如果NATIVEMEMINFO部分
 显示的类分配值特别大，那么很可能就是类重复加载的问题。通过MAT的Class Loader Explorer特性可以观察到类重复
 加载的问题。
+
+### 死锁
+
+死锁是指两个或多个线程互相持有对方需要的锁。死锁发生时，你的应用程序将停止响应并且挂住。此时生成一个Javadump文件
+会很快帮助你定位到发生死锁的线程。这种情况下，可以发送SIGQUIT信号(kill -3)给虚拟机，触发转储。
+
+虚拟机会检测到最常见的死锁场景。如果检测到死锁，LOCKS部分就会相关的信息。一些更加复杂的死锁，比如本地互斥锁和Java
+锁的死锁，就可能无法检测出来了。
+
+下面的例子是比较普通的死锁的Javadump的输出
+    
+    NULL           
+    1LKDEADLOCK    Deadlock detected !!!
+    NULL           ---------------------
+    NULL           
+    2LKDEADLOCKTHR  Thread "Worker Thread 2" (0x94501D00)
+    3LKDEADLOCKWTR    is waiting for:
+    4LKDEADLOCKMON      sys_mon_t:0x08C2B344 infl_mon_t: 0x08C2B384:
+    4LKDEADLOCKOBJ      java/lang/Object@0xB5666698
+    3LKDEADLOCKOWN    which is owned by:
+    2LKDEADLOCKTHR  Thread "Worker Thread 3" (0x94507500)
+    3LKDEADLOCKWTR    which is waiting for:
+    4LKDEADLOCKMON      sys_mon_t:0x08C2B3A0 infl_mon_t: 0x08C2B3E0:
+    4LKDEADLOCKOBJ      java/lang/Object@0xB5666678
+    3LKDEADLOCKOWN    which is owned by:
+    2LKDEADLOCKTHR  Thread "Worker Thread 1" (0x92A3EC00)
+    3LKDEADLOCKWTR    which is waiting for:
+    4LKDEADLOCKMON      sys_mon_t:0x08C2B2E8 infl_mon_t: 0x08C2B328:
+    4LKDEADLOCKOBJ      java/lang/Object@0xB5666688
+    3LKDEADLOCKOWN    which is owned by:
+    2LKDEADLOCKTHR  Thread "Worker Thread 2" (0x94501D00)
+    
+这段信息告诉你Worker Thread 2等待Worker Thread 3，而Worker Thread 3在等待Worker Thread 1，
+Worker Thread 1在等待Worker Thread 2，这就形成了死锁。还可以在THREADS部分的Java方法栈和本地方法栈观察到
+死锁的现象。通过观察每个Worker Thread的方法栈，也能跟踪到造成此死锁的具体代码行。
+
+这个案例中，你可以观察到所有工作线程的输出(*4XESTACKTRACE/5XESTACKTRACE*) ，在DeadLockTest.java的35行导致了死锁的问题
+
+    3XMTHREADINFO      "Worker Thread 1" J9VMThread:0x92A3EC00, omrthread_t:0x92A3C2B0, java/lang/Thread:0xB5666778, state:B, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x13, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x52CF, native priority:0x5, native policy:UNKNOWN, vmstate:B, vm thread flags:0x00000201)
+    3XMTHREADINFO2            (native stack address range from:0x9297E000, to:0x929BF000, size:0x41000)
+    3XMCPUTIME               CPU usage total: 0.004365543 secs, current category="Application"
+    3XMTHREADBLOCK     Blocked on: java/lang/Object@0xB5666688 Owned by: "Worker Thread 2" (J9VMThread:0x94501D00, java/lang/Thread:0xB56668D0)
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at WorkerThread.run(DeadLockTest.java:35)
+    5XESTACKTRACE                   (entered lock: java/lang/Object@0xB5666678, entry count: 1)
+    ...
+    3XMTHREADINFO      "Worker Thread 2" J9VMThread:0x94501D00, omrthread_t:0x92A3C8F0, java/lang/Thread:0xB56668D0, state:B, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x14, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x52D0, native priority:0x5, native policy:UNKNOWN, vmstate:B, vm thread flags:0x00000201)
+    3XMTHREADINFO2            (native stack address range from:0x946BF000, to:0x94700000, size:0x41000)
+    3XMCPUTIME               CPU usage total: 0.004555580 secs, current category="Application"
+    3XMTHREADBLOCK     Blocked on: java/lang/Object@0xB5666698 Owned by: "Worker Thread 3" (J9VMThread:0x94507500, java/lang/Thread:0xB5666A18)
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at WorkerThread.run(DeadLockTest.java:35)
+    5XESTACKTRACE                   (entered lock: java/lang/Object@0xB5666688, entry count: 1)
+    ...
+    3XMTHREADINFO      "Worker Thread 3" J9VMThread:0x94507500, omrthread_t:0x92A3CC10, java/lang/Thread:0xB5666A18, state:B, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x15, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x52D1, native priority:0x5, native policy:UNKNOWN, vmstate:B, vm thread flags:0x00000201)
+    3XMTHREADINFO2            (native stack address range from:0x9467E000, to:0x946BF000, size:0x41000)
+    3XMCPUTIME               CPU usage total: 0.003657010 secs, current category="Application"
+    3XMTHREADBLOCK     Blocked on: java/lang/Object@0xB5666678 Owned by: "Worker Thread 1" (J9VMThread:0x92A3EC00, java/lang/Thread:0xB5666778)
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at WorkerThread.run(DeadLockTest.java:35)
+    5XESTACKTRACE                   (entered lock: java/lang/Object@0xB5666698, entry count: 1)
+    
+    
+### 挂死
+
+应用程序可能由于很多原因而挂死，但是最常见的原因是GC活动导致的，在GC期间，应用程序会暂停。你可以通过观察GC日志来定位
+挂死的问题，参数是-verbose:gc option
+
+死锁问题对外表现也是应用程序挂死。通过Javadump的deadlock部分可以定位死锁问题。
+
+如果你排除了GC活动和死锁，另一种常见的挂死场景是由于相关的线程在等待Java对象锁，这类问题也可以通过观察Javadump转储文件来定位
+最简单的锁等待挂死场景就是线程需要另一个线程持有的锁，但是另一个线程因为某种原因无法释放这个锁。
+
+出现挂死问题，首先得观察LOCKS部分，这部分列出了所有的锁、持有锁的线程、等待锁的线程。你可以通过观察正在等待的线程
+来定位挂死的问题。
+
+这个案例中，Javadump的LOCKS部分显示Worker Thread 0(*3LKMONOBJECT*)持有了一把锁，有19个Worker Thread
+正在等待他释放。
+
+    NULL           ------------------------------------------------------------------------
+    0SECTION       LOCKS subcomponent dump routine
+    NULL           ===============================
+    NULL           
+    1LKPOOLINFO    Monitor pool info:
+    2LKPOOLTOTAL     Current total number of monitors: 1
+    NULL           
+    1LKMONPOOLDUMP Monitor Pool Dump (flat & inflated object-monitors):
+    2LKMONINUSE      sys_mon_t:0x92711200 infl_mon_t: 0x92711240:
+    3LKMONOBJECT       java/lang/Object@0xB56658D8: Flat locked by "Worker Thread 0" (J9VMThread:0x92A3EC00), entry count 1
+    3LKWAITERQ            Waiting to enter:
+    3LKWAITER                "Worker Thread 1" (J9VMThread:0x92703F00)
+    3LKWAITER                "Worker Thread 2" (J9VMThread:0x92709C00)
+    3LKWAITER                "Worker Thread 3" (J9VMThread:0x92710A00)
+    3LKWAITER                "Worker Thread 4" (J9VMThread:0x92717F00)
+    3LKWAITER                "Worker Thread 5" (J9VMThread:0x9271DC00)
+    3LKWAITER                "Worker Thread 6" (J9VMThread:0x92723A00)
+    3LKWAITER                "Worker Thread 7" (J9VMThread:0x92729800)
+    3LKWAITER                "Worker Thread 8" (J9VMThread:0x92733700)
+    3LKWAITER                "Worker Thread 9" (J9VMThread:0x92739400)
+    3LKWAITER                "Worker Thread 10" (J9VMThread:0x92740200)
+    3LKWAITER                "Worker Thread 11" (J9VMThread:0x92748100)
+    3LKWAITER                "Worker Thread 12" (J9VMThread:0x9274DF00)
+    3LKWAITER                "Worker Thread 13" (J9VMThread:0x92754D00)
+    3LKWAITER                "Worker Thread 14" (J9VMThread:0x9275AA00)
+    3LKWAITER                "Worker Thread 15" (J9VMThread:0x92760800)
+    3LKWAITER                "Worker Thread 16" (J9VMThread:0x92766600)
+    3LKWAITER                "Worker Thread 17" (J9VMThread:0x9276C300)
+    3LKWAITER                "Worker Thread 18" (J9VMThread:0x92773100)
+    3LKWAITER                "Worker Thread 19" (J9VMThread:0x92778F00)
+    NULL      
+    
+下一步是定位为什么 Worker Thread 0没有释放这个锁，最好的定位方法是通过线程名称或者J9VMThread ID来搜索，
+看看这个线程当前在干什么
+
+下面的部分显示了线程Worker Thread 0的详细信息
+
+    NULL
+    3XMTHREADINFO      "Worker Thread 0" J9VMThread:0x92A3EC00, omrthread_t:0x92A3C280, java/lang/Thread:0xB56668B8, state:CW, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x13, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x511F, native priority:0x5, native policy:UNKNOWN, vmstate:CW, vm thread flags:0x00000401)
+    3XMTHREADINFO2            (native stack address range from:0x9297E000, to:0x929BF000, size:0x41000)
+    3XMCPUTIME               CPU usage total: 0.000211878 secs, current category="Application"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at java/lang/Thread.sleep(Native Method)
+    4XESTACKTRACE                at java/lang/Thread.sleep(Thread.java:941)
+    4XESTACKTRACE                at WorkerThread.doWork(HangTest.java:37)
+    4XESTACKTRACE                at WorkerThread.run(HangTest.java:31)
+    5XESTACKTRACE                   (entered lock: java/lang/Object@0xB56658D8, entry count: 1)
+    
+在这段输出的最后一行，你可以看到Work Thread 0申请到一把锁(java/lang/Object@0xB56658D8),
+申请到之后，线程的run方法开始运行，内部调用doWork方法。从方法栈可以看出这个线程在HangTest.java的37行
+调用了java/lang/Thread.sleep方法，从而导致线程无法完成工作并且无法释放锁。这个例子中，sleep方法的调用
+促使了应用程序的挂死，但在实际生产环境中，导致应用程序挂死的，可能是一个阻塞操作，
+例如通过输入流或者套接字读取数据；也可能是一个线程在等待另一个线程持有的另一个锁。
+
+有一点很重要，每一个Javadump只是一个时间点的快照。定位一个问题，你至少要每隔一段时间(例如30秒)转储1次，共转储3次，
+然后比较每次转储的输出。通过比较你可以观察到哪些线程一直在运行，哪些线程已经运行结束。
+
+这个例子中，即使多次转储，线程状态也没有发生改变。因此你需要聚焦到WorkerThread.doWork的实现逻辑。
+
+另一种常见的场景是Javadump显示了大量的线程在等待一个由另一个线程持有的锁，但等待的线程和持有锁的线程在不断变化。
+那么这个场景的瓶颈就可能是线程竞争问题，多个线程持续不断的竞争一把锁。在严重的情况下，线程持有锁的时间也非常短暂，
+应用程序处理锁，调度锁的耗时超过了执行应用程序代码的耗时，性能会急剧下降，对外表现也是应用程序挂死。线程竞争问题通常是
+应用程序设计问题引起的，你可以使用本场景类似的方法，观察是哪些代码行在竞争锁。
+   
