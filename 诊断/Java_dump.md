@@ -1027,7 +1027,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
 后续会根据团队遇到的问题更新，这是学习使用Javadump文件非常好的素材
 
 ### GPF错误
-这个场景中，Java应用程序由于GPF（General Protection Fault）错误崩溃，自动进行了Java转储
+这个案例中，Java应用程序由于GPF（General Protection Fault）错误崩溃，自动进行了Java转储
 
 首先从TITLE部分观察到Javadump的原因是GPF
 
@@ -1122,7 +1122,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
  
 ### OOM错误
 
-这个场景中，Java应用程序耗尽了内存，导致OutOfMemoryError，自动进行了Javadump
+这个案例中，Java应用程序耗尽了内存，导致OutOfMemoryError，自动进行了Javadump
 
 首先从TITLE部分观察到Javadump的原因是systhrow，systhrow的详细原因是java/lang/OutOfMemoryError
 
@@ -1142,7 +1142,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
 如果你不清楚设置多大的堆内存才合适，你可以观察ENVINFO部分，这部分提供了应用程序的启动参数。
 查找*1CIUSERARGS*关键字，Java堆大小通过-Xmx参数设置，如果这个参数还没有设置，那么会使用默认值。
 
-这个场景中，并不是通过调大堆内存来解决问题的。我们继续观察MEMINFO部分
+这个案例中，并不是通过调大堆内存来解决问题的。我们继续观察MEMINFO部分
 
  
     0SECTION       MEMINFO subcomponent dump routine
@@ -1160,7 +1160,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     1STHEAPFREE    Total memory free:    234267752 (0x0DF6A468)
     
 这部分显示只有56%的堆内存被使用，因此建议应用程序进行调优，所以需要观察是哪个线程导致的OOM，
-这个线程正在试图干什么。和上一个场景类似，你可以观察THREADS部分的当前线程，下面是Current Thread的输出  
+这个线程正在试图干什么。和上一个案例类似，你可以观察THREADS部分的当前线程，下面是Current Thread的输出  
  
     0SECTION       THREADS subcomponent dump routine
     NULL           =================================
@@ -1264,8 +1264,146 @@ MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们�
  
     Help > Install New Software > Work with "IBM Diagnostic Tool Framework for Java" >  
   
-与之前的场景不同，如果你的应用发生了OOM，并且从MEMIFO部分观察到只有很少的堆内存空闲，那么，当前是哪个线程
+与之前的案例不同，如果你的应用发生了OOM，并且从MEMIFO部分观察到只有很少的堆内存空闲，那么，当前是哪个线程
 导致的OOM就不重要了，任何线程都可能由于被调度到并分配内存而导致应用的OOM。这种情况下，你可能需要增大堆内存
 或者通过调优应用来解决。
 
 
+### 本地OOM错误
+这个案例中，虚拟机占用的内存溢出。虚拟机占用的内存包括虚拟机存储用来进行操作的资源和数据。
+虚拟机进程可以使用的本地内存受限于操作系统，例如Unix的ulimits
+
+当本地OOM错误发生时，会自动进行Javadump。可以从Javadump的TITLE部分观察到Javadump的原因是systhrow，
+systhrow的详细原因是java/lang/OutOfMemoryError，本地内存耗尽。
+
+    0SECTION       TITLE subcomponent dump routine
+    NULL           ===============================
+    1TICHARSET     UTF-8
+    1TISIGINFO     Dump Event "systhrow" (00040000) Detail "java/lang/OutOfMemoryError" "native memory exhausted" received
+    1TIDATETIME    Date: 2018/09/14 at 15:49:55:887
+    1TINANOTIME    System nanotime: 3636862054495675
+    1TIFILENAME    Javacore filename:    /home/cheesemp/test/javacore.20180914.154814.19708.0003.txt
+    1TIREQFLAGS    Request Flags: 0x81 (exclusive+preempt)
+    1TIPREPSTATE   Prep State: 0x104 (exclusive_vm_access+trace_disabled)
+    
+有时，是当前线程导致的本地OOM，可以通过观察THREADS部分的Current Thread来继续诊断
+
+    0SECTION       THREADS subcomponent dump routine
+    NULL           =================================
+    NULL
+    1XMPOOLINFO    JVM Thread pool info:
+    2XMPOOLTOTAL       Current total number of pooled threads: 16
+    2XMPOOLLIVE        Current total number of live threads: 16
+    2XMPOOLDAEMON      Current total number of live daemon threads: 15
+    NULL            
+    1XMCURTHDINFO  Current thread
+    3XMTHREADINFO      "main" J9VMThread:0xB6C60C00, omrthread_t:0xB6C049D8, java/lang/Thread:0xB55E3C10, state:R, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x1, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x4CFD, native priority:0x5, native policy:UNKNOWN, vmstate:R, vm thread flags:0x00001020)
+    3XMTHREADINFO2            (native stack address range from:0xB6D4E000, to:0xB754F000, size:0x801000)
+    3XMCPUTIME               CPU usage total: 3.654896026 secs, current category="Application"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at sun/misc/Unsafe.allocateDBBMemory(Native Method)
+    4XESTACKTRACE                at java/nio/DirectByteBuffer.<init>(DirectByteBuffer.java:127(Compiled Code))
+    4XESTACKTRACE                at java/nio/ByteBuffer.allocateDirect(ByteBuffer.java:311)
+    4XESTACKTRACE                at NativeHeapBreaker.main(NativeHeapBreaker.java:9)
+    3XMTHREADINFO3           Native callstack:
+    4XENATIVESTACK               (0xB6A9F5B3 [libj9prt29.so+0x3b5b3])
+    ...
+    4XENATIVESTACK               (0xB582CC9C [libjclse7b_29.so+0x40c9c])
+    4XENATIVESTACK               Java_sun_misc_Unsafe_allocateDBBMemory+0x88 (0xB5827F6B [libjclse7b_29.so+0x3bf6b])
+    4XENATIVESTACK               (0x94A2084A [<unknown>+0x0])
+    4XENATIVESTACK               (0xB6B2538B [libj9vm29.so+0x6c38b])
+    4XENATIVESTACK               (0xB6B4074C [libj9vm29.so+0x8774c])
+    4XENATIVESTACK               (0xB6B7F299 [libj9vm29.so+0xc6299])
+    4XENATIVESTACK               (0xB6A82F3E [libj9prt29.so+0x1ef3e])
+    4XENATIVESTACK               (0xB6B7F32A [libj9vm29.so+0xc632a])
+    4XENATIVESTACK               (0xB6B4084C [libj9vm29.so+0x8784c])
+    4XENATIVESTACK               (0xB6B3CD0C [libj9vm29.so+0x83d0c])
+    4XENATIVESTACK               (0xB776F87D [libjli.so+0x787d])
+    4XENATIVESTACK               (0xB7784F72 [libpthread.so.0+0x6f72])
+    4XENATIVESTACK               clone+0x5e (0xB76A043E [libc.so.6+0xee43e])
+
+为了更加清晰，缩短了本地调用堆栈的输出，其中...表示被略去的部分
+
+Java调用堆栈显示了从Java代码(sun/misc/Unsafe.allocateDBBMemory(Native Method))到本地代码的调用关系
+表明应用程序在请求堆外内存，Java的堆外内存功能的底层正是本地内存，Java堆只是维护一个引用指向本地堆缓存。
+这个案例中，堆外内存可能正是本地OOM的罪魁祸首。
+
+定位本地OOM问题的下一步是观察Javadump文件的NATIVEMEMINFO部分，可以看到JRE进程整体占用的内存，还可以按组件观察占用的内存
+
+    0SECTION       NATIVEMEMINFO subcomponent dump routine
+    NULL           =================================
+    0MEMUSER
+    1MEMUSER       JRE: 3,166,386,688 bytes / 4388 allocations
+    1MEMUSER       |
+    2MEMUSER       +--VM: 563,176,824 bytes / 1518 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Classes: 3,104,416 bytes / 120 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Memory Manager (GC): 548,181,888 bytes / 398 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Java Heap: 536,932,352 bytes / 1 allocation
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 11,249,536 bytes / 397 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Threads: 10,817,120 bytes / 147 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Java Stack: 115,584 bytes / 16 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Native Stack: 10,616,832 bytes / 17 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 84,704 bytes / 114 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Trace: 163,688 bytes / 268 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JVMTI: 17,320 bytes / 13 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JNI: 23,296 bytes / 55 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Port Library: 8,576 bytes / 74 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Other: 860,520 bytes / 443 allocations
+    1MEMUSER       |
+    2MEMUSER       +--JIT: 3,744,728 bytes / 122 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JIT Code Cache: 2,097,152 bytes / 1 allocation
+    2MEMUSER       |  |
+    3MEMUSER       |  +--JIT Data Cache: 524,336 bytes / 1 allocation
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Other: 1,123,240 bytes / 120 allocations
+    1MEMUSER       |
+    2MEMUSER       +--Class Libraries: 2,599,463,024 bytes / 2732 allocations
+    2MEMUSER       |  |
+    3MEMUSER       |  +--Harmony Class Libraries: 1,024 bytes / 1 allocation
+    2MEMUSER       |  |
+    3MEMUSER       |  +--VM Class Libraries: 2,599,462,000 bytes / 2731 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--sun.misc.Unsafe: 2,598,510,480 bytes / 2484 allocations
+    4MEMUSER       |  |  |  |
+    5MEMUSER       |  |  |  +--Direct Byte Buffers: 2,598,510,480 bytes / 2484 allocations
+    3MEMUSER       |  |  |
+    4MEMUSER       |  |  +--Other: 951,520 bytes / 247 allocations
+    1MEMUSER       |
+    2MEMUSER       +--Unknown: 2,112 bytes / 16 allocations
+    NULL           
+
+观察VM Class Libraries部分，可以看见这部分占用堆外内存大小。由于本案例是在32位系统上发生的本地OOM，那么
+2,598,510,480 字节基本可以认为是Unix操作系统的物理内存耗尽，进程耗尽操作系统的内存一般是由于ulimit设置，
+增加ulimit的设置可能能避免这个错误，可以在当前会话通过ulimit -f 命令来临时设置阈值。
+
+理论上32位虚拟机最大可占用的内存空间是32位地址空间，即4G。大多数操作系统中，每个进程中有部分地址会被内核占用，
+因此实际可以利用的内存空间明显小于4G。结果是，在32位虚拟机上耗尽内存的现象非常普遍。
+
+4G限制同样影响到64位虚拟机。在引用压缩模式下，为了提升性能，所有对象、类、线程、锁的引用都是32位值，
+so these structures can be allocated only at 32-bit addresses. However,
+ the operating system might place other allocations within this 4 GB of address space,
+ 当这个区域被充满或者有大量碎片时，虚拟机就会抛出NativeOutOfMemoryError错误。这个错误时常发生在虚拟机试图
+ 创建一个新线程或加载一个类时。在本地OOM发生时，Current Thread History部分可能会包含更多虚拟机层面的信息。
+ 
+你可以通过设置-Xmcrs参数避免此问题，关于-Xmcrs，参考[这里](https://www.eclipse.org/openj9/docs/xmcrs/)
+
+另一个导致本地OOM错误的常见原因是类重复加载，很可能类在堆外也被加载了一遍。如果NATIVEMEMINFO部分
+显示的类分配值特别大，那么很可能就是类重复加载的问题。通过MAT的Class Loader Explorer特性可以观察到类重复
+加载的问题。
