@@ -1,10 +1,8 @@
 # Java转储
-Javadump 也称为 Javacore。Java 转储的缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt
-
 
 ## 转储格式
 ### 文件格式
-Javadump 通常是文本格式(.txt)，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
+Javadump 通常是文本格式(.txt)，缺省文件名为 javacore.\<date>.\<time>.\<pid>.\<sequence number>.txt，因此可以通过一般的文本编辑器进行阅读，阅读时需要注意段与行的格式
 ### 段落格式
 * 每一段的开头，都会用“-----”与上一段明显的区分开来
 * 每一段的标题也会用“=====”作为标识
