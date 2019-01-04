@@ -24,11 +24,13 @@ Javadump 通常是文本格式(.txt)，因此可以通过一般的文本编辑�
 等等
 
 ## 转储内容
-Javadump汇总了事件发生时虚拟机的状态，包括大部分虚拟机组件的信息，dump文件由多个部分组成，每个部分提供了不同的信息
+Javadump汇总了事件发生时虚拟机的状态，包括虚拟机组件的大部分信息。转储文件由多个部分组成，
+每个部分提供了不同的信息
 
-感觉段落用英文更加专业，无歧义
+[作者注]感觉段落用英文更加专业，无歧义
 ### TITLE 
-TITLE部分提供了触发dump的事件信息。下面的例子中，你可以看到是vmstop事件在2018/08/30 21:55:47这个时间触发了这个dump
+TITLE部分提供了转储时的事件信息。下面的例子中，你可以看到是vmstop事件在2018/08/30 21:55:47这个时间
+触发了这次转储
 
     0SECTION       TITLE subcomponent dump routine
     NULL           ===============================
@@ -43,7 +45,7 @@ TITLE部分提供了触发dump的事件信息。下面的例子中，你可以�
 Dump Event参数可以参考[Dump Events](https://github.com/wenger66/openj9-in-chinese/blob/master/%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%8F%82%E6%95%B0/JVM%20-X%E5%8F%82%E6%95%B0/-Xdump.md#dump%E4%BA%8B%E4%BB%B6)
 
 ### GPINFO
-GPINFO部分提供了运行虚拟机的操作系统的信息。下面的例子，说明虚拟机是运行在Linux系统上的
+GPINFO部分提供了运行虚拟机的操作系统信息。下面的例子，说明虚拟机是运行在Linux系统上的
 
     NULL           ------------------------------------------------------------------------
     0SECTION       GPINFO subcomponent dump routine
@@ -57,8 +59,9 @@ GPINFO部分提供了运行虚拟机的操作系统的信息。下面的例子�
     1XHERROR2      Register dump section only produced for SIGSEGV, SIGILL or SIGFPE.
     NULL
     
-GPINFO部分包含的内容可能因为dump的原因不同而多种多样。例如如果是因为gpf事件触发的dump，会用VM Flags记录导致崩溃的库，通过VM Flags这个值
-可以追溯到VM的组件。比如下面这段
+GPINFO部分包含的内容可能因为转储原因不同而多种多样。例如如果是因为gpf事件触发的dump，
+会用**VM Flags**记录导致崩溃的库，通过VM Flags这个值
+可以追溯到具体虚拟机组件。比如下面这段
 
     1XHFLAGS       VM flags:0000000000000000  
     
@@ -75,23 +78,22 @@ VM Flags的十六进制的数字以MSSSS格式结束。M表示虚拟机，SSSS�
 |RTVERIFY	|0x70000|
 |SHAREDCLASSES	|0x80000|
 
-0000000000000000 (0x00000) 表示崩溃不是由虚拟机造成的
+0000000000000000 (0x00000) 表示崩溃是虚拟机外部造成的
 
 ### ENVINFO
-ENVINFO部分提供了程序运行环境的很多有用信息
-* Java版本（1CIJAVAVERSION）
-* OpenJ9虚拟机版本及其组件版本（1CIVMVERSION, 1CIJ9VMVERSION, 1CIJITVERSION, 1CIOMRVERSION, 1CIJCLVERSION）
-* 虚拟机启动时间（1CISTARTTIME）
-* 进程ID（1CIPROCESSID）
-* Jave home文件夹（1CIJAVAHOMEDIR）
-* Java dll文件夹（1CIJAVADLLDIR）
-* 用户设置的Java参数（1CIUSERARG）
-* 用户进程受到的资源限制信息（1CIUSERLIMITS）
-* 环境变量（1CIENVVARS）
-* 系统信息（1CISYSINFO）
-* CPU信息（1CICPUINFO）
-
-================================================================
+ENVINFO部分提供了应用程序运行环境的很多有用信息，例如
+* Java版本（**1CIJAVAVERSION**）
+* OpenJ9虚拟机版本及其组件版本（**1CIVMVERSION**, **1CIJ9VMVERSION**, 
+**1CIJITVERSION**, **1CIOMRVERSION**, **1CIJCLVERSION**）
+* 虚拟机启动时间（**1CISTARTTIME**）
+* 进程ID（**1CIPROCESSID**）
+* Jave home文件夹（**1CIJAVAHOMEDIR**）
+* Java dll文件夹（**1CIJAVADLLDIR**）
+* 用户设置的Java参数（**1CIUSERARG**）
+* 用户进程受到的资源限制信息（**1CIUSERLIMITS**）
+* 环境变量（**1CIENVVARS**）
+* 系统信息（**1CISYSINFO**）
+* CPU信息（**1CICPUINFO**）
 
 
     NULL           ------------------------------------------------------------------------
@@ -156,7 +158,8 @@ ENVINFO部分提供了程序运行环境的很多有用信息
     2CITARGETCPU   Target CPUs: 4
 
 
-资源限制（1CIUSERLIMITS）部分，除了NOFILE和NPROC类，其他都是字节为单位（好像不对，例如RLIMIT_CPU）。在Linux系统中，Resouce Limit指在一个进程的执行过程中，它受到的资源的限制
+资源限制(**1CIUSERLIMITS**)部分，除了NOFILE和NPROC类，其他都是字节为单位。(好像不对，例如RLIMIT_CPU)。
+在Linux系统中，Resouce Limit指在一个进程的执行过程中，它受到的资源的限制
 * RLIMIT_AS - 进程的最大虚内存空间，字节为单位。
 * RLIMIT_CORE - 内核转存文件的最大长度。
 * RLIMIT_CPU - 最大允许的CPU使用时间，秒为单位。当进程达到软限制，内核将给其发送SIGXCPU信号，这一信号的默认行为是终止进程的执行。然而，可以捕捉信号，处理句柄可将控制返回给主程序。如果进程继续耗费CPU时间，核心会以每秒一次的频率给其发送SIGXCPU信号，直到达到硬限制，那时将给进程发送 SIGKILL信号终止其执行。
@@ -195,7 +198,7 @@ ENVINFO部分提供了程序运行环境的很多有用信息
     2CIUSERLIMIT   RLIMIT_SIGPENDING                    95712                95712
     
 
-环境变量（1CIENVVARS）部分，会打印出所有的环境变量，对于docker环境非常有用
+环境变量(**1CIENVVARS**)部分，会打印出所有的环境变量，对于docker环境非常有用
 
     1CIENVVARS     Environment Variables
     NULL           ------------------------------------------------------------------------
@@ -311,9 +314,9 @@ ENVINFO部分提供了程序运行环境的很多有用信息
     
 CPU信息（1CICPUINFO）部分，也是非常有用的
 * Physical CPUs：物理CPU核数
-* Online CPUs：？
+* Online CPUs：不明
 * Bound CPUs：从容器环境看，这就是容器拥有的CPU核数
-* Target CPUs：？
+* Target CPUs：不明
 
 
     1CICPUINFO     CPU Information
@@ -327,7 +330,7 @@ CPU信息（1CICPUINFO）部分，也是非常有用的
 ### NATIVEMEMINFO
 
 NATIVEMEMINFO部分提供了所有通过库函数例如malloc()函数和mmap()函数分配的本机内存大小，
-内存大小按照组件做了细分，每个内存类别都包含该类别和所有子类别的内存大小综合。
+内存大小按照组件做了细分，每个内存类别都包含该类别和所有子类别的内存大小总和。
 在下面的例子中，4682840字节，141个分配单元？的本机内存分配给了虚拟机上的类
 
 
@@ -393,11 +396,11 @@ NATIVEMEMINFO部分提供了所有通过库函数例如malloc()函数和mmap()�
     NULL           
 
 
-可以在VM Class libraries部分找到 Direct Byte Buffers的内存类别
+可以在VM Class libraries部分找到堆外内存(Direct Byte Buffers)的内存类别
 
 如果设置Dcom.ibm.dbgmalloc=true之后，会在Class Libraries 部分中记录明细的内存分类信息
 
-这部分不会记录应用分配的或者JNI code分配的内存
+这部分不会记录应用分配的或者 JNI code 分配的内存
 
 这部分统计的内存总量始终略低于通过操作系统工具统计的本机地址空间总使用量
 
@@ -405,11 +408,11 @@ NATIVEMEMINFO部分提供了所有通过库函数例如malloc()函数和mmap()�
 MEMINFO部分与内存管理有关，提供了虚拟机对内存使用的分类明细的10进制和16进制格式，包括对象堆，内部内存，类使用的内存，
 JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使用的垃圾回收策略
 
-堆内存部分（1STHEAPTYPE）记录对象内存使用的堆区域信息，包括堆区域的开始、结束的地址，以及堆区域的大小
-段内存部分（1STSEGMENT）记录了内部内存，类占用内存，JIT代码高速缓存和JIT数据高速缓存的分段信息，
+堆内存部分(**1STHEAPTYPE**)记录对象内存使用的堆区域信息，包括堆区域的开始、结束的地址，以及堆区域的大小
+段内存部分(**1STSEGMENT**)记录了内部内存，类占用内存，JIT代码高速缓存和JIT数据高速缓存的分段信息，
 包括控制分段的数据结构的地址，分段开始和分段结束的地址，以及分段大小
 
-堆内存部分 (HEAPTYPE)：
+堆内存部分 (**HEAPTYPE**)：
 * id - 空间或区域的标识
 * start - 堆区域的启动地址
 * end - 堆区域的结束地址
@@ -417,7 +420,7 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 * space/region - 对于仅包含id和名称的行，该列显示内存空间的名称。否则，该列显示内存空间名称，
 后跟该内存空间中包含的特定区域的名称。
 
-段内存部分 (SEGTYPE)：
+段内存部分 (**SEGTYPE**)：
 * segment - 段控制数据结构的地址
 * start - 本机内存段的开始地址
 * alloc - 本机内存段的当前分配地址
@@ -427,7 +430,7 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
 
 关于堆/段/内部内存/类占用内存的解释：参考[这里](https://github.com/wenger66/openj9-in-chinese/blob/master/垃圾回收/Memory_Manager.md)
 
-为了更加清晰，下面的例子缩短了这部分的内容，其中...表示被略去的部分
+为了清晰，下面的例子略去了部分内容，用...表示
 
     NULL           ------------------------------------------------------------------------
     0SECTION       MEMINFO subcomponent dump routine
@@ -594,20 +597,19 @@ JIT代码缓存和JIT数据缓存。你可以根据这部分判断出当前使�
     NULL     
 
 ### LOCKS
-LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体访问的共享对象。这部分的信息在系统
+LOCKS部分提供了锁的信息，锁是用来保护同一时间被多个实体访问的共享对象。LOCKS这部分信息在应用程序
 出现死锁时尤为关键，死锁是指两个或多个线程互相持有对方需要的锁。LOCKS部分中有导致死锁的线程的
-详细信息，可以帮助你确定死锁的根源。
+详细信息，可以帮助你定位死锁的根源。
 
-在进行Javadump时，JVM会尝试检测死锁循环。
-JVM 可以检测由通过同步获取的锁和/或扩展了 java.util.concurrent.locks.AbstractOwnableSynchronizer 类的锁组成的循环
+在进行Java转储时，JVM会尝试检测死锁循环：
+JVM 可以检测由通过同步获取的锁和/或扩展了 java.util.concurrent.locks.AbstractOwnableSynchronizer 类的锁组成的死锁循环
 
 Java 语言中的每个对象都有关联的锁定，也称为监控器（Monitor），所以LOCKS部分中大量出现monitor字样。
 
-*3LKWAITER*这个关键字值得注意，会搜索到一些需要你探究的信息
+**3LKWAITER**这个关键字值得注意，会搜索到一些需要你探究的信息
 
 下面的例子展示了典型的没有出现死锁的LOCKS部分信息。为了更加清晰，
-下面的例子缩短了这部分的内容，其中...表示被略去的部分
-
+下面的例子略去了部分内容，用...表示
 
     NULL           ------------------------------------------------------------------------
     0SECTION       LOCKS subcomponent dump routine
@@ -673,12 +675,12 @@ ReentrantLock实例
 THREADS部分提供了虚拟机线程池的概要信息，Java线程、本地线程的详细信息，以及线程调用栈。
 对于应用程序员而言，本部分是Javadump最有用、最常观察的部分之一，可以帮助你定位阻塞、等待的线程。
 
-* 3XMTHREADINFO：线程名称，虚拟机线程结构和Java线程对象的地址，Java线程状态和Java线程优先级
-* 3XMJAVALTHREAD：Java线程ID和daemon状态
-* 3XMTHREADINFO1：本地操作系统的线程ID，优先级，调度策略，虚拟机线程状态，虚拟机线程标记
-* 3XMTHREADINFO2：本地栈的地址范围
-* 3XMTHREADINFO3：Java调用栈信息或本地调用栈信息
-* 5XESTACKTRACE：调用堆栈，这部分可以表明是否有方法持有了某个锁
+* **3XMTHREADINFO**：线程名称，虚拟机线程结构和Java线程对象的地址，Java线程状态和Java线程优先级
+* **3XMJAVALTHREAD**：Java线程ID和daemon状态
+* **3XMTHREADINFO1**：本地操作系统的线程ID，优先级，调度策略，虚拟机线程状态，虚拟机线程标记
+* **3XMTHREADINFO2**：本地栈的地址范围
+* **3XMTHREADINFO3**：Java调用栈信息或本地调用栈信息
+* **5XESTACKTRACE**：调用堆栈，这部分可以表明是否有方法持有了某个锁
 
 关于Java的Daemon线程的解释：参考[这里](https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html)
 
@@ -693,22 +695,22 @@ Java线程状态和虚拟机线程状态的值可以是以下
 * P – 已停放 – 该线程已因并发 API (java.util.concurrent) 而被停放。如线程池中的线程被使用后再次放回线程池，状态即为Parked
 * B – 已阻塞 – 该线程正在等待获取其他对象当前拥有的锁
 
-*3XMTHREADBLOCK* - 如果线程状态为已停放(P)、已阻塞(B)、正在等待条件(CW)，那么输出信息中会包含以*3XMTHREADBLOCK*开头的一行，紧跟着会有
+**3XMTHREADBLOCK** - 如果线程状态为已停放(P)、已阻塞(B)、正在等待条件(CW)，那么输出信息中会包含以**3XMTHREADBLOCK**开头的一行，紧跟着会有
 Blocked on，Parked on，Waiting on，
 会列出该线程正在等待的资源，以及当前拥有该资源的线程。要特别关注这3类线程
 
-*3XMCPUTIME* - 对于 Java 线程和本机线程，输出信息中会包含以 *3XMCPUTIME* 开头的行。该行显示自启动线程
+**3XMCPUTIME** - 对于 Java 线程和本机线程，输出信息中会包含以 *3XMCPUTIME* 开头的行。该行显示自启动线程
 以来线程所耗用的 CPU 时间（以秒计），即该线程所使用的 CPU 总时间。
 注意：如果从线程池中复用某个 Java 线程，那么不会重置此线程的 CPU 时间，而会继续累计。
 
-*3XMHEAPALLOC* - 对于 Java 线程，输出信息中会包含以 *3XMHEAPALLOC* 开头的行。
+**3XMHEAPALLOC** - 对于 Java 线程，输出信息中会包含以 *3XMHEAPALLOC* 开头的行。
 自上次垃圾回收以来该线程所分配的堆字节数。
 
-*1XECTHTYPE* - 对于由异常 throw、catch、uncaught 和 systhrow 事件
-或由 com.ibm.jvm.Dump API 触发的 Javadump，会在 THREADS 部分的结尾处输出包含*1XECTHTYPE*的行。
+**1XECTHTYPE** - 对于由异常 throw、catch、uncaught 和 systhrow 事件
+或由 com.ibm.jvm.Dump API 触发的 Javadump，会在 THREADS 部分的结尾处输出包含**1XECTHTYPE**的行。
 这些行显示dump时的触发点。
 
-为了更加清晰，下面的例子缩短了THREADS这部分的内容，其中...表示被略去的部分
+为了更加清晰，下面的例略去了部分内容，使用...表示
 
 
     NULL           ------------------------------------------------------------------------
@@ -780,11 +782,11 @@ Blocked on，Parked on，Waiting on，
     NULL
     
     
-在发生Javadump时，所有运行Java代码的线程状态可能是可运行（R）状态或者正在等待条件（CW）状态
+在发生Java转储时，所有运行Java代码的线程状态可能是可运行（R）状态或者正在等待条件（CW）状态
 
 要特别关注已停放(P)、已阻塞(B)、正在等待条件(CW)这三类状态的线程
 要了解哪些资源拥有处于停放、等待或阻塞状态的线程，
-可以查找以 *3XMTHREADBLOCK* 开始的行。 该行还可能指示哪个线程拥有该资源。
+可以查找以 **3XMTHREADBLOCK** 开始的行。 该行还可能指示哪个线程拥有该资源。
 
 #### Owned by: <unknown>
 可以扩展并使用 AbstractOwnableSynchronizer 类以在 Javadump中提供信息，以便帮助诊断锁的问题。
@@ -885,11 +887,11 @@ OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动�
 如果共享类特性在运行期启用，SHARED CLASSES部分将提供创建共享类缓存的配置信息，共享类缓存的大小和内容的概要信息
 
 下面的例子中，创建共享类缓存时的配置包括：
-*类调试区域(Class Debug Area) - -Xnolinenumbers建议虚拟机不要加载任何类的调试信息，-Xnolinenumbers = false说明加载了类调试信息
-*字节码工具(Byte code instrumentation) - 默认启用BCI，共享类特性支持与运行时字节码修改进行集成
-*保存类路径 - 默认启用保存类路径
-====================================================================================
-
+* 类调试区域(Class Debug Area) - -Xnolinenumbers建议虚拟机不要加载任何类的调试信息，-Xnolinenumbers = false说明加载了类调试信息
+* 字节码工具(Byte code instrumentation) - 默认启用BCI，共享类特性支持与运行时字节码修改进行集成
+* 保存类路径 - 默认启用保存类路径
+    
+    
     NULL
     1SCLTEXTCRTW   Cache Created With
     NULL           ------------------
@@ -900,10 +902,10 @@ OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动�
     NULL
 
 
-缓存概要信息包括了类缓存大小 (*2SCLTEXTCSZ*) 是16776608个字节, 
-弹性？最大缓存大小 (*2SCLTEXTSMB*) 也是16776608个字节, 
-空闲空间大小(*2SCLTEXTFRB*)是12691668个字节，
-类调试区域(*2SCLTEXTDAS*)是1331200个字节，11%的空间已使用。
+缓存概要信息包括了类缓存大小 (**2SCLTEXTCSZ**) 是16776608个字节, 
+弹性？最大缓存大小 (**2SCLTEXTSMB**) 也是16776608个字节, 
+空闲空间大小(**2SCLTEXTFRB**)是12691668个字节，
+类调试区域(**2SCLTEXTDAS**)是1331200个字节，11%的空间已使用。
 
     NULL
     1SCLTEXTCSUM   Cache Summary
@@ -964,7 +966,7 @@ OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动�
     NULL
     
     
-*2SCLTEXTCMDT*开头的行显示了共享类缓存的名称和地址,CR表明缓存是64位压缩的引用缓存  
+**2SCLTEXTCMDT**开头的行显示了共享类缓存的名称和地址,CR表明缓存是64位压缩的引用缓存  
 
     NULL
     1SCLTEXTCMST   Cache Memory Status
@@ -982,8 +984,8 @@ OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动�
     NULL
 
 ### CLASSES
-CLASSES部分提供了ClassLoader的信息。第一部分提供了每个ClassLoader的概要信息（*2CLTEXTCLLOADER*），包括
-加载的库数量和类数量。接下来有更多的关于加载库的详细信息（*1CLTEXTCLLIB*）和加载类的详细信息（*1CLTEXTCLLO*）
+CLASSES部分提供了ClassLoader的信息。第一部分提供了每个ClassLoader的概要信息(**2CLTEXTCLLOADER**)，包括
+加载的库数量和类数量。接下来有更多的关于加载库的详细信息(**1CLTEXTCLLIB**)和加载类的详细信息(**1CLTEXTCLLO**)
 
 下面的例子中，你可以看见java/lang/InternalAnonymousClassLoader加载了2个类，分别是
 jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x0000000001030F00)

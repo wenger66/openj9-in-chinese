@@ -55,6 +55,8 @@
 
 ## Javadump的CPU信息部分，Online CPUs和Target CPUs什么意思
 
+## NativeMEMINFO部分，Classes: 4,682,840 bytes / 141 allocations，allocations是什么含义
+
 
 ## 3LKWAITNOTIFY 什么含义？    
 
