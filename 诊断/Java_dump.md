@@ -1,5 +1,7 @@
 # Java转储
 
+wenger66开头部分为作者经验，建议关注
+
 ## 目录  
 - [转储格式](#转储格式) 
   - [文件格式](#文件格式) 
@@ -220,7 +222,7 @@ ENVINFO部分提供了应用程序运行环境的很多有用信息，例如
     2CIUSERLIMIT   RLIMIT_SIGPENDING                    95712                95712
     
 
-环境变量(**1CIENVVARS**)部分，会打印出所有的环境变量，对于docker环境非常有用
+wenger66:`环境变量(**1CIENVVARS**)部分，会打印出所有的环境变量，对于容器内的应用程序非常有用`
 
     1CIENVVARS     Environment Variables
     NULL           ------------------------------------------------------------------------
@@ -705,6 +707,9 @@ THREADS部分提供了虚拟机线程池的概要信息，Java线程、本地线
 * **3XMTHREADINFO3**：Java调用栈信息或本地调用栈信息
 * **5XESTACKTRACE**：调用堆栈，这部分可以表明是否有方法持有了某个锁
 
+wenger66:`THREADS部分的Current Thread非常有用，可以显示自动转储时，当前的线程。经过测试，手工转储时，没有 Current thread 部分；只有自动转储时，才有 Current thread 部分`
+
+
 关于Java的Daemon线程的解释：参考[这里](https://www.cnblogs.com/ChrisWang/archive/2009/11/28/1612815.html)
 
 Java线程优先级会根据平台映射至操作系统优先级值。较大的Java线程优先级值表明该线程具有较高的优先级。换言之，该线程会比较低优先级的线程更频繁地运行。
@@ -807,14 +812,10 @@ Blocked on，Parked on，Waiting on，
     
 在发生Java转储时，所有运行Java代码的线程状态可能是可运行（R）状态或者正在等待条件（CW）状态
 
-要特别关注已停放(P)、已阻塞(B)、正在等待条件(CW)这三类状态的线程
+wenger66:
+`要特别关注已停放(P)、已阻塞(B)、正在等待条件(CW)这三类状态的线程
 要了解哪些资源拥有处于停放、等待或阻塞状态的线程，
-可以查找以 **3XMTHREADBLOCK** 开始的行。 该行还可能指示哪个线程拥有该资源。
-
-
-wenger66:`THREADS部分的Current Thread非常有用，可以显示自动转储时，当前的线程`
-
-`经过测试，手工转储时，没有 Current thread 部分；只有自动转储时，才有 Current thread 部分`
+可以查找以 **3XMTHREADBLOCK** 开始的行。 该行还可能指示哪个线程拥有该资源。`
 
 
 #### Owned by: <unknown>
