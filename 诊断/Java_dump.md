@@ -7,6 +7,7 @@ wenger66开头部分为作者经验，建议关注
   - [文件格式](#文件格式) 
   - [段落格式](#段落格式) 
   - [行格式](#行格式) 
+- [关键字](#关键字)
 - [转储内容](#转储内容)  
   - [TITLE](#TITLE) 
   - [GPINFO](#GPINFO) 
@@ -45,6 +46,29 @@ Javadump 通常是文本格式(.txt)，缺省文件名为 javacore.\<date>.\<tim
 * XE - Execution engine
 
 等等
+
+## 关键字
+wenger66:`我特别整理了一些重要的关键字，可以使用这些关键字搜索Java转储文件，获取到关键信息`
+
+|关键字 |相关信息|
+| --------   | -----:   | 
+|1TISIGINFO 	|转储的原因，dump event|
+|UserArgs 	|各种Java启动参数|
+|-Xmx|Java启动分配的最大堆内存大小|
+|2CIUSERLIMIT|系统对应用程序的限制|
+|2CIENVVAR	|注入到应用程序的环境变量|
+|Bound CPUs、Physical CPUs	|应用程序使用的总CPU核数|
+|Direct Byte Buffers|	堆外内存|
+|Object Memory	|Java对象占用的内存|
+|GC History|GC的历史日志|
+|requestedbytes	|请求分配内存空间的大小|
+|Global GC|	Full GC 肯定是越少越好|
+|Waiting to enter	|线程排队等待锁|
+|Waiting to be notified	|线程等待被唤醒|
+|Deadlock detected	|检测到死锁|
+|3XMTHREADBLOCK|	当前被阻塞的线程|
+|Current thread	|转储时当前运行的线程|
+
 
 ## 转储内容
 Java转储文件汇总了事件发生时虚拟机的状态，包括虚拟机组件的大部分信息。转储文件由多个部分组成，
