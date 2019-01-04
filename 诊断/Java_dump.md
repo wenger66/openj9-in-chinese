@@ -1070,6 +1070,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     
 要定位这个问题，需要找到是哪个线程引起的GPF错误。在THREADS部分，  **Current thread**关键字指出了在应用崩溃时
 正在运行的线程。下面是THREADS部分的详细信息
+
 +经过测试，转储事件为user时，没有 Current thread 部分；转储事件为systhrow时，才有 Current thread 部分
   
     NULL           ------------------------------------------------------------------------
