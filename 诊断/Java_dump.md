@@ -1031,7 +1031,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
 ### GPF错误
 这个案例中，Java应用程序由于GPF（General Protection Fault）错误崩溃，自动进行了Java转储
 
-首先从TITLE部分观察到Javadump的原因是GPF
+首先从TITLE部分观察到转储的原因是GPF
 
 
     0SECTION       TITLE subcomponent dump routine
@@ -1045,7 +1045,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     1TIPREPSTATE   Prep State: 0x100 (trace_disabled)
     1TIPREPINFO    Exclusive VM access not taken: data may not be consistent across javacore sections
     
-要定位这个问题，需要找到是哪个线程引起的GPF错误。在THREADS部分，  Current thread关键字指出了在应用崩溃时
+要定位这个问题，需要找到是哪个线程引起的GPF错误。在THREADS部分，  **Current thread**关键字指出了在应用崩溃时
 正在运行的线程。下面是THREADS部分的详细信息  
   
     NULL           ------------------------------------------------------------------------
@@ -1124,7 +1124,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
  
 ### OOM错误
 
-这个案例中，Java应用程序耗尽了内存，导致OutOfMemoryError，自动进行了Javadump
+这个案例中，Java应用程序耗尽了内存，导致OutOfMemoryError，自动进行了Java转储
 
 首先从TITLE部分观察到Javadump的原因是systhrow，systhrow的详细原因是java/lang/OutOfMemoryError
 
@@ -1138,11 +1138,11 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     1TIREQFLAGS    Request Flags: 0x81 (exclusive+preempt)
     1TIPREPSTATE   Prep State: 0x104 (exclusive_vm_access+trace_disabled)
     
-接下来可以观察MEMINFO部分，这部分可以观察到分配了多少堆内存用于存储对象（*1STHEAPTYPE*），已经使用了多少，
-仍空闲了多少。最简单的解决问题的方法就是给你的应用程序设置一个更大的堆内存
+接下来可以观察MEMINFO部分，这部分可以观察到分配了多少堆内存用于存储对象（**1STHEAPTYPE**），已经使用了多少，
+仍空闲多少。最简单的解决问题的方法就是给你的应用程序设置一个更大的堆内存
 
 如果你不清楚设置多大的堆内存才合适，你可以观察ENVINFO部分，这部分提供了应用程序的启动参数。
-查找*1CIUSERARGS*关键字，Java堆大小通过-Xmx参数设置，如果这个参数还没有设置，那么会使用默认值。
+查找**1CIUSERARGS**关键字，Java堆大小通过-Xmx参数设置，如果这个参数还没有设置，会使用默认值。
 
 这个案例中，并不是通过调大堆内存来解决问题的。我们继续观察MEMINFO部分
 
@@ -1162,7 +1162,7 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     1STHEAPFREE    Total memory free:    234267752 (0x0DF6A468)
     
 这部分显示只有56%的堆内存被使用，因此建议应用程序进行调优，所以需要观察是哪个线程导致的OOM，
-这个线程正在试图干什么。和上一个案例类似，你可以观察THREADS部分的当前线程，下面是Current Thread的输出  
+这个线程正在试图干什么。和上一个案例类似，你可以观察THREADS部分的当前线程，下面是**Current Thread**的输出  
  
     0SECTION       THREADS subcomponent dump routine
     NULL           =================================
@@ -1196,15 +1196,15 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     4XENATIVESTACK               (0xB6C4E9CD [libj9prt29.so+0x369cd])
     4XENATIVESTACK               (0xB6C502FA [libj9prt29.so+0x382fa])
     
-为了模拟Java的OOM，这个例子的应用程序使用一个死循环不断的在StringBuffer对象上追加字符串。
-Java调用堆显示出HeapBreaker的main程序在不断通过java/lang/StringGuffer.append方法追加字符串，
-某次追加时java/lang/StringBuffer.ensureCapacityImpl()这个方法抛出了OOM错误。
+为了模拟Java的OOM，这个案例的应用程序使用一个死循环不断的在StringBuffer对象上追加字符串。
+Java调用堆显示出HeapBreaker的main程序在不断通过java/lang/StringBuffer.append方法追加字符串，
+某次追加调用java/lang/StringBuffer.ensureCapacityImpl()这个方法时抛出了OOM错误。
 
-StringBuffer对象底层是char数组，当达到数组的最大容量时，当前数组中的内容就要拷贝到一个新的，容量更大的数组中。
+StringBuffer对象底层是char数组，当达到数组的最大容量时，当前数组中的内容就要拷贝到一个新的、容量更大的数组中。
 新建一个更大的数组就是在StringBuffer.ensureCapacity()方法中实现的，方法运行过程中，难免要需要旧数组2倍的内存空间，
-也就是在这个点，内存占用超过Java堆所有的剩余空间，导致了OOM。
+也就是在这个点，内存占用超出了Java堆所有的剩余空间，导致了OOM。
 
-MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们来观察GC History部分(*1STGCHTYPE*)，
+MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们来观察GC History部分(**1STGCHTYPE**)，
 这部分会显示触发GC活动的请求。下面的例子中，你可以观察到一次大的内存分配请求(关键字requestedbytes，请求大小=576M)直接导致了全局GC。
 如果GC后仍不能释放足够多的空间以响应这个请求，那么也会导致OOM。
 
@@ -1255,7 +1255,7 @@ MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们�
     3STHSTTYPE     14:29:29:248971000 GMT j9mm.560 -   LocalGC end: rememberedsetoverflow=0 causedrememberedsetoverflow=0 scancacheoverflow=0 failedflipcount=0 failedflipbytes=0 failedtenurecount=0 failedtenurebytes=0 flipcount=0 flipbytes=0 newspace=2686976/3014656 oldspace=80601248/533856256 loa=5338112/5338112 tenureage=0
     
 
-尽管这个例子中是Java代码故意造成的OOM，但实际应用中，类似的内存分配问题常用发生，例如在处理包含大量数据的XML文件时。
+尽管这个例子中是Java代码故意造成的OOM，但实际应用中，类似的内存分配问题常有发生，例如在处理包含大量数据的XML文件时。
 
 定位OOM问题接下来的步骤是打开Systemdump文件。可以使用MAT(Eclipse Memory Analyzer tool)
 打开dump文件，查找StringBuffer对象，可以找到更多导致OOM的线索。最普遍的场景是，可以观察到相同的字符串
@@ -1267,7 +1267,7 @@ MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们�
     Help > Install New Software > Work with "IBM Diagnostic Tool Framework for Java" >  
   
 与之前的案例不同，如果你的应用发生了OOM，并且从MEMIFO部分观察到只有很少的堆内存空闲，那么，当前是哪个线程
-导致的OOM就不重要了，任何线程都可能由于被调度到并分配内存而导致应用的OOM。这种情况下，你可能需要增大堆内存
+就不重要了，任何线程都可能由于被调度到并分配内存而导致应用的OOM。这种情况下，你可能需要增大堆内存
 或者通过调优应用来解决。
 
 
@@ -1275,7 +1275,7 @@ MEMINFO部分还能观察到一些导致OOM的大的内存分配请求。我们�
 这个案例中，虚拟机占用的内存溢出。虚拟机占用的内存包括虚拟机存储用来进行操作的资源和数据。
 虚拟机进程可以使用的本地内存受限于操作系统，例如Unix的ulimits
 
-当本地OOM错误发生时，会自动进行Javadump。可以从Javadump的TITLE部分观察到Javadump的原因是systhrow，
+当本地OOM错误发生时，会自动进行Java转储。可以从转储文件的TITLE部分观察到Java转储的原因是systhrow，
 systhrow的详细原因是java/lang/OutOfMemoryError，本地内存耗尽。
 
     0SECTION       TITLE subcomponent dump routine
@@ -1327,13 +1327,13 @@ systhrow的详细原因是java/lang/OutOfMemoryError，本地内存耗尽。
     4XENATIVESTACK               (0xB7784F72 [libpthread.so.0+0x6f72])
     4XENATIVESTACK               clone+0x5e (0xB76A043E [libc.so.6+0xee43e])
 
-为了更加清晰，缩短了本地调用堆栈的输出，其中...表示被略去的部分
+为了更加清晰，略去了部分本地调用堆栈的输出，用...表示
 
 Java调用堆栈显示了从Java代码(sun/misc/Unsafe.allocateDBBMemory(Native Method))到本地代码的调用关系
-表明应用程序在请求堆外内存，Java的堆外内存功能的底层正是本地内存，Java堆只是维护一个引用指向本地堆缓存。
+表明应用程序在请求堆外内存，Java堆外内存功能的底层正是本地内存，Java堆只是维护一个引用指向本地堆缓存。
 这个案例中，堆外内存可能正是本地OOM的罪魁祸首。
 
-定位本地OOM问题的下一步是观察Javadump文件的NATIVEMEMINFO部分，可以看到JRE进程整体占用的内存，还可以按组件观察占用的内存
+定位本地OOM问题的下一步是观察Javadump文件的NATIVEMEMINFO部分，可以看到JRE进程整体占用的内存，还可以按组件观察每个组件占用的内存
 
     0SECTION       NATIVEMEMINFO subcomponent dump routine
     NULL           =================================
@@ -1413,7 +1413,7 @@ so these structures can be allocated only at 32-bit addresses. However,
 ### 死锁
 
 死锁是指两个或多个线程互相持有对方需要的锁。死锁发生时，你的应用程序将停止响应并且挂住。此时生成一个Javadump文件
-会很快帮助你定位到发生死锁的线程。这种情况下，可以发送SIGQUIT信号(kill -3)给虚拟机，触发转储。
+会很快帮助你定位到发生死锁的线程。这种情况下，你可以发送SIGQUIT信号(kill -3)给虚拟机，触发转储。
 
 虚拟机会检测到最常见的死锁场景。如果检测到死锁，LOCKS部分就会相关的信息。一些更加复杂的死锁，比如本地互斥锁和Java
 锁的死锁，就可能无法检测出来了。
@@ -1445,7 +1445,7 @@ so these structures can be allocated only at 32-bit addresses. However,
 Worker Thread 1在等待Worker Thread 2，这就形成了死锁。还可以在THREADS部分的Java方法栈和本地方法栈观察到
 死锁的现象。通过观察每个Worker Thread的方法栈，也能跟踪到造成此死锁的具体代码行。
 
-这个案例中，你可以观察到所有工作线程的输出(*4XESTACKTRACE/5XESTACKTRACE*) ，在DeadLockTest.java的35行导致了死锁的问题
+这个案例中，你可以观察到所有工作线程的输出(**4XESTACKTRACE/5XESTACKTRACE**) ，在DeadLockTest.java的35行导致了死锁的问题
 
     3XMTHREADINFO      "Worker Thread 1" J9VMThread:0x92A3EC00, omrthread_t:0x92A3C2B0, java/lang/Thread:0xB5666778, state:B, prio=5
     3XMJAVALTHREAD            (java/lang/Thread getId:0x13, isDaemon:false)
@@ -1488,7 +1488,7 @@ Worker Thread 1在等待Worker Thread 2，这就形成了死锁。还可以在TH
 
 死锁问题对外表现也是应用程序挂死。通过Javadump的deadlock部分可以定位死锁问题。
 
-如果你排除了GC活动和死锁，另一种常见的挂死场景是由于相关的线程在等待Java对象锁，这类问题也可以通过观察Javadump转储文件来定位
+如果你排除了GC活动和死锁，另一种常见的挂死场景是由于相关的线程在等待Java对象锁，这类问题也可以通过观察Java转储文件来定位。
 最简单的锁等待挂死场景就是线程需要另一个线程持有的锁，但是另一个线程因为某种原因无法释放这个锁。
 
 出现挂死问题，首先得观察LOCKS部分，这部分列出了所有的锁、持有锁的线程、等待锁的线程。你可以通过观察正在等待的线程
@@ -1554,13 +1554,13 @@ Worker Thread 1在等待Worker Thread 2，这就形成了死锁。还可以在TH
 促使了应用程序的挂死，但在实际生产环境中，导致应用程序挂死的，可能是一个阻塞操作，
 例如通过输入流或者套接字读取数据；也可能是一个线程在等待另一个线程持有的另一个锁。
 
-有一点很重要，每一个Javadump只是一个时间点的快照。定位一个问题，你至少要每隔一段时间(例如30秒)转储1次，共转储3次，
+有一点很重要，每一个Java转储文件只是一个时间点的快照。定位一个问题，你至少要每隔一段时间(例如30秒)转储1次，共转储3次，
 然后比较每次转储的输出。通过比较你可以观察到哪些线程一直在运行，哪些线程已经运行结束。
 
 这个例子中，即使多次转储，线程状态也没有发生改变。因此你需要聚焦到WorkerThread.doWork的实现逻辑。
 
 另一种常见的场景是Javadump显示了大量的线程在等待一个由另一个线程持有的锁，但等待的线程和持有锁的线程在不断变化。
 那么这个场景的瓶颈就可能是线程竞争问题，多个线程持续不断的竞争一把锁。在严重的情况下，线程持有锁的时间也非常短暂，
-应用程序处理锁，调度锁的耗时超过了执行应用程序代码的耗时，性能会急剧下降，对外表现也是应用程序挂死。线程竞争问题通常是
+应用程序处理锁、调度锁的耗时超过了执行应用程序代码的耗时，性能会急剧下降，对外表现也是应用程序挂死。线程竞争问题通常是
 应用程序设计问题引起的，你可以使用本场景类似的方法，观察是哪些代码行在竞争锁。
    

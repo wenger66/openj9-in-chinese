@@ -7,15 +7,17 @@
 * -Xmx
 * 2CIUSERLIMIT
 * 2CIENVVAR
-* 2CIBOUNDCPU
+* Bound CPUs、Physical CPUs
 * Direct Byte Buffers
-* 1STHEAPTYPE    Object Memory
-* 1STGCHTYPE     GC History 
+* Object Memory
+* GC History     
 * requestedbytes
 * Global GC
-* 3LKWAITER
+* Waiting to enter
+* Waiting to be notified
 * Deadlock detected 
 * 3XMTHREADBLOCK
+* Current thread
 
 观察转储原因：OOM，自动输出了转储文件
 
@@ -305,11 +307,98 @@
     
 观察死锁：无
     
-观察等待的锁：使用3LKWAITER关键字搜索
+观察被多个线程排队等待的锁：使用**Waiting to enter**关键字搜索
 
     3LKMONOBJECT       org/apache/kafka/clients/consumer/internals/ConsumerNetworkClient@0x00000005C0713318: owner "BroadcastReceiver" (J9VMThread:0x0000000000DE5300), entry count 1
     3LKWAITERQ            Waiting to enter:
     3LKWAITER                "kafka-coordinator-heartbeat-thread | BroadCastState_zenap_b2ad1446-d5c2-43b3-98a4-e68e1b1e060fa6a8321c-1552-4217-a0dd-5729700e8124" (J9VMThread:0x00000000013A3A00)
+    
+再使用线程ID**0x0000000000DE5300**搜索，观察BroadcastReceiver线程为什么不释放这个锁
+  
+    3XMTHREADINFO      "BroadcastReceiver" J9VMThread:0x0000000000DE5300, omrthread_t:0x00007F3960935870, java/lang/Thread:0x00000005C07135C8, state:R, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x44, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x57, native priority:0x5, native policy:UNKNOWN, vmstate:CW, vm thread flags:0x00001001)
+    3XMTHREADINFO2            (native stack address range from:0x00007F398DC8D000, to:0x00007F398DCCD000, size:0x40000)
+    3XMCPUTIME               CPU usage total: 13.670688044 secs, current category="Application"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at java/lang/Integer.valueOf(Integer.java:832(Compiled Code))
+    4XESTACKTRACE                at sun/nio/ch/EPollSelectorImpl.updateSelectedKeys(EPollSelectorImpl.java:120(Compiled Code))
+    4XESTACKTRACE                at sun/nio/ch/EPollSelectorImpl.doSelect(EPollSelectorImpl.java:98(Compiled Code))
+    4XESTACKTRACE                at sun/nio/ch/SelectorImpl.lockAndDoSelect(SelectorImpl.java:86(Compiled Code))
+   
+观察等待被唤醒的锁：使用**Waiting to be notified**关键字搜索
+
+    2LKREGMON          GCExtensions::gcExclusiveAccessMutex lock (0x00007F39B4004EE8): <unowned>
+    3LKNOTIFYQ            Waiting to be notified:
+    3LKWAITNOTIFY            "MemoryMXBean notification dispatcher" (J9VMThread:0x0000000000BEDB00)
+    3LKWAITNOTIFY            "logback-1" (J9VMThread:0x0000000000E00300)
+    3LKWAITNOTIFY            "logback-2" (J9VMThread:0x0000000000DE2300)
+    3LKWAITNOTIFY            "metrics-console-reporter-1-thread-1" (J9VMThread:0x00000000010A0000)
+    3LKWAITNOTIFY            "Timer-0" (J9VMThread:0x00000000010DA500)
+    3LKWAITNOTIFY            "kafka-producer-network-thread | zenap_kafka_100.100.5.41_rm-service-producer1" (J9VMThread:0x00000000011FE100)
+    3LKWAITNOTIFY            "kafka-producer-network-thread | zenap_kafka_100.100.5.41_1" (J9VMThread:0x00000000011FB500)
+    3LKWAITNOTIFY            "metrics-console-reporter-2-thread-1" (J9VMThread:0x00000000011FC100)
+    3LKWAITNOTIFY            "Thread-18" (J9VMThread:0x00000000012C5D00)
+    
+
+观察转储时的线程：Jetty的QueuedThreadPool就是worker线程池。每当一个请求来临的时候，Jetty就从这个QueuedThreadPool中新建一个线程或者取一个空闲线程来处理这个请求
+从方法栈来看，是从Jetty的QueuedThreadPool中取一个空闲线程时遭遇到了OOM。这可能只是OOM的触发点，并没有内存泄漏的问题。
+
+    1XMCURTHDINFO  Current thread
+    3XMTHREADINFO      "dw-280" J9VMThread:0x0000000000DCB700, omrthread_t:0x00007F368C002DE0, java/lang/Thread:0x0000000765D5D590, state:R, prio=5
+    3XMJAVALTHREAD            (java/lang/Thread getId:0x118, isDaemon:false)
+    3XMTHREADINFO1            (native thread ID:0x12E, native priority:0x5, native policy:UNKNOWN, vmstate:R, vm thread flags:0x00001020)
+    3XMTHREADINFO2            (native stack address range from:0x00007F36E60CD000, to:0x00007F36E610D000, size:0x40000)
+    3XMCPUTIME               CPU usage total: 418.496217656 secs, current category="Application"
+    3XMHEAPALLOC             Heap bytes allocated since last GC cycle=0 (0x0)
+    3XMTHREADINFO3           Java callstack:
+    4XESTACKTRACE                at java/lang/Throwable.fillInStackTrace(Native Method)
+    4XESTACKTRACE                at java/lang/Throwable.<init>(Throwable.java:86(Compiled Code))
+    4XESTACKTRACE                at java/lang/Throwable.<init>(Throwable.java:97(Compiled Code))
+    4XESTACKTRACE                at java/lang/Error.<init>(Error.java:70)
+    4XESTACKTRACE                at java/lang/VirtualMachineError.<init>(VirtualMachineError.java:53)
+    4XESTACKTRACE                at java/lang/OutOfMemoryError.<init>(OutOfMemoryError.java:58)
+    4XESTACKTRACE                at java/util/concurrent/locks/AbstractQueuedSynchronizer.addWaiter(AbstractQueuedSynchronizer.java:606(Compiled Code))
+    4XESTACKTRACE                at java/util/concurrent/locks/AbstractQueuedSynchronizer.doAcquireInterruptibly(AbstractQueuedSynchronizer.java:885(Compiled Code))
+    4XESTACKTRACE                at java/util/concurrent/locks/AbstractQueuedSynchronizer.acquireInterruptibly(AbstractQueuedSynchronizer.java:1222(Compiled Code))
+    4XESTACKTRACE                at java/util/concurrent/locks/ReentrantLock.lockInterruptibly(ReentrantLock.java:335(Compiled Code))
+    4XESTACKTRACE                at org/eclipse/jetty/util/BlockingArrayQueue.poll(BlockingArrayQueue.java:383(Compiled Code))
+    4XESTACKTRACE                at org/eclipse/jetty/util/thread/QueuedThreadPool.idleJobPoll(QueuedThreadPool.java:600(Compiled Code))
+    4XESTACKTRACE                at org/eclipse/jetty/util/thread/QueuedThreadPool.access$800(QueuedThreadPool.java:49(Compiled Code))
+    4XESTACKTRACE                at org/eclipse/jetty/util/thread/QueuedThreadPool$2.run(QueuedThreadPool.java:663(Compiled Code))
+    4XESTACKTRACE                at java/lang/Thread.run(Thread.java:813)
+    3XMTHREADINFO3           Native callstack:
+    4XENATIVESTACK               (0x00007F39B3420002 [libj9prt29.so+0x3a002])
+    4XENATIVESTACK               (0x00007F39B340580D [libj9prt29.so+0x1f80d])
+    4XENATIVESTACK               (0x00007F39B342007C [libj9prt29.so+0x3a07c])
+    4XENATIVESTACK               (0x00007F39B3420186 [libj9prt29.so+0x3a186])
+    4XENATIVESTACK               (0x00007F39B340580D [libj9prt29.so+0x1f80d])
+    4XENATIVESTACK               (0x00007F39B341FED1 [libj9prt29.so+0x39ed1])
+    4XENATIVESTACK               (0x00007F39B341C07C [libj9prt29.so+0x3607c])
+    4XENATIVESTACK               (0x00007F39B341D234 [libj9prt29.so+0x37234])
+    4XENATIVESTACK               (0x00007F39B340580D [libj9prt29.so+0x1f80d])
+    4XENATIVESTACK               (0x00007F39B2FB75D7 [libj9dmp29.so+0x185d7])
+    4XENATIVESTACK               (0x00007F39B2FB79AD [libj9dmp29.so+0x189ad])
+    4XENATIVESTACK               (0x00007F39B340580D [libj9prt29.so+0x1f80d])
+    4XENATIVESTACK               (0x00007F39B2FB43AF [libj9dmp29.so+0x153af])
+    4XENATIVESTACK               (0x00007F39B2FAFF3D [libj9dmp29.so+0x10f3d])
+    4XENATIVESTACK               (0x00007F39B340580D [libj9prt29.so+0x1f80d])
+    4XENATIVESTACK               (0x00007F39B2FB0D17 [libj9dmp29.so+0x11d17])
+    4XENATIVESTACK               (0x00007F39B2FB9A19 [libj9dmp29.so+0x1aa19])
+    4XENATIVESTACK               (0x00007F39B2FA3A8D [libj9dmp29.so+0x4a8d])
+    4XENATIVESTACK               (0x00007F39B2FA30B5 [libj9dmp29.so+0x40b5])
+    4XENATIVESTACK               (0x00007F39B340580D [libj9prt29.so+0x1f80d])
+    4XENATIVESTACK               (0x00007F39B2FA68CA [libj9dmp29.so+0x78ca])
+    4XENATIVESTACK               (0x00007F39B2FA6A24 [libj9dmp29.so+0x7a24])
+    4XENATIVESTACK               (0x00007F39B2FBB5B3 [libj9dmp29.so+0x1c5b3])
+    4XENATIVESTACK               (0x00007F39B2FB9EA4 [libj9dmp29.so+0x1aea4])
+    4XENATIVESTACK               (0x00007F39B3648387 [libj9hookable29.so+0x1387])
+    4XENATIVESTACK               (0x00007F39B3AFBBFC [libj9vm29.so+0x95bfc])
+    4XENATIVESTACK               (0x00007F39B3A80880 [libj9vm29.so+0x1a880])
+    4XENATIVESTACK               (0x00007F39B3A7EDCB [libj9vm29.so+0x18dcb])
+    4XENATIVESTACK               (0x00007F39B3B3A4C2 [libj9vm29.so+0xd44c2])
+
 
 观察阻塞的线程：使用3XMTHREADBLOCK关键字搜索，大量的请求处理线程都Parked，原因是dw-274线程持有的一个锁(0x00000005FB64DBF0)，但这个锁(0x00000005FB64DBF0)在LOCKS部分没有列出来    
 
@@ -393,8 +482,9 @@
     3LKWAITNOTIFY            "dw-273 - GET /api/res/v1/subnetworks/06670f87-1e4f-49df-9910-858028199616/fddv3.eutrancellfdds?includeAttr=userLabel,nbiIdDn&queryDn=true" (J9VMThread:0x0000000001A60D00)
     3LKWAITNOTIFY            "dw-274" (J9VMThread:0x00000000018E2100)
     3LKWAITNOTIFY            "dw-275 - POST /api/res/v1/toolkits/id2name" (J9VMThread:0x0000000001A68400)
-    
     ...
+    
+ 
 
 
     
