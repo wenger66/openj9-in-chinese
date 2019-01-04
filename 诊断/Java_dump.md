@@ -722,11 +722,11 @@ Java线程状态和虚拟机线程状态的值可以是以下
 Blocked on，Parked on，Waiting on，
 会列出该线程正在等待的资源，以及当前拥有该资源的线程。要特别关注这3类线程
 
-**3XMCPUTIME** - 对于 Java 线程和本机线程，输出信息中会包含以 *3XMCPUTIME* 开头的行。该行显示自启动线程
+**3XMCPUTIME** - 对于 Java 线程和本机线程，输出信息中会包含以 **3XMCPUTIME** 开头的行。该行显示自启动线程
 以来线程所耗用的 CPU 时间（以秒计），即该线程所使用的 CPU 总时间。
 注意：如果从线程池中复用某个 Java 线程，那么不会重置此线程的 CPU 时间，而会继续累计。
 
-**3XMHEAPALLOC** - 对于 Java 线程，输出信息中会包含以 *3XMHEAPALLOC* 开头的行。
+**3XMHEAPALLOC** - 对于 Java 线程，输出信息中会包含以**3XMHEAPALLOC** 开头的行。
 自上次垃圾回收以来该线程所分配的堆字节数。
 
 **1XECTHTYPE** - 对于由异常 throw、catch、uncaught 和 systhrow 事件
@@ -810,6 +810,12 @@ Blocked on，Parked on，Waiting on，
 要特别关注已停放(P)、已阻塞(B)、正在等待条件(CW)这三类状态的线程
 要了解哪些资源拥有处于停放、等待或阻塞状态的线程，
 可以查找以 **3XMTHREADBLOCK** 开始的行。 该行还可能指示哪个线程拥有该资源。
+
+
+wenger66:`THREADS部分的Current Thread非常有用，可以显示自动转储时，当前的线程`
+
+`经过测试，手工转储时，没有 Current thread 部分；只有自动转储时，才有 Current thread 部分`
+
 
 #### Owned by: <unknown>
 可以扩展并使用 AbstractOwnableSynchronizer 类以在 Javadump中提供信息，以便帮助诊断锁的问题。
@@ -1070,8 +1076,6 @@ jdk/internal/loader/BuiltinClassLoader$$Lambda$2/00000000F03876A0(0x000000000103
     
 要定位这个问题，需要找到是哪个线程引起的GPF错误。在THREADS部分，  **Current thread**关键字指出了在应用崩溃时
 正在运行的线程。下面是THREADS部分的详细信息
-
-```+wenger66:经过测试，转储事件为user时，没有 Current thread 部分；转储事件为systhrow时，才有 Current thread 部分```
   
     NULL           ------------------------------------------------------------------------
     0SECTION       THREADS subcomponent dump routine
