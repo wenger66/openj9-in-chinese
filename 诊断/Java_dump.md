@@ -14,7 +14,7 @@
   - [LOCKS](#LOCKS) 
   - [THREADS](#THREADS)   
   - [HOOK](#HOOK)  
-  - [SHARED CLASSES](#SHARED CLASSES)  
+  - [SHARED CLASSES](#SHARED_CLASSES)  
   - [CLASSES](#CLASSES)  
 - [实战](#实战) 
   - [GPF错误](#GPF错误) 
@@ -903,7 +903,7 @@ HOOK 部分提供了用于内部性能诊断的 JVM 内部事件回调的详细�
     ...
     NULL
     
-### SHARED CLASSES
+### SHARED_CLASSES
 
 OpenJ9 中的共享类特性可以用来减少内存占用并改进 JVM 启动时间，参考[这里](https://www.ibm.com/developerworks/cn/java/j-class-sharing-openj9/index.html)
 
