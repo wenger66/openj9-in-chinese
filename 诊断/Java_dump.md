@@ -53,7 +53,7 @@ wenger66:`我特别整理了一些重要的关键字，可以使用这些关键�
 |关键字 |相关信息|
 | --------   | -----:   | 
 |1TISIGINFO 	|转储的原因，dump event|
-|UserArgs 	|各种Java启动参数|
+|2CIUSERARG 	|各种Java启动参数|
 |-Xmx|Java启动分配的最大堆内存大小|
 |2CIUSERLIMIT|系统对应用程序的限制|
 |2CIENVVAR	|注入到应用程序的环境变量|
