@@ -25,7 +25,11 @@
 ### 系统参数
 
 ### JVM -X参数
-* [-Xdump](./命令行参数/JVM-X参数/-Xdump.md)
+* [-Xdump](./命令行参数/JVM-X参数/-Xdump.md) 
+* [-XcompilationThreads](./命令行参数/JVM-X参数/-XcompilationThreads.md) 指定JIT编译的线程数 
+* [-Xjit](./命令行参数/JVM-X参数/-Xjit.md) 是否启用JIT编译器
+* [-Xminf](./命令行参数/JVM-X参数/-Xminf.md) 理论堆占用率最小值
+* [-Xmaxf](./命令行参数/JVM-X参数/-Xmaxf.md) 理论堆占用率最大值
 * [‑Xenableexcessivegc / ‑Xdisableexcessivegc](https://www.ibm.com/support/knowledgecenter/zh/SSYKE2_8.0.0/openj9/xenableexcessivegc/index.html)
 
 ### JVM -XX参数
