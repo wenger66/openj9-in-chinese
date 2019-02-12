@@ -70,12 +70,129 @@ GC日志是基于事件的，每个垃圾回收操作进行时会生成日志
     
 有关垃圾回收策略部分中一些项
 * gcPolicy，参考 -Xgcpolicy 选项
-* maxHeapSize，最大堆大小
-* initialHeapSize, 初始堆大小
+* maxHeapSize，即-Xmx设置，堆最大值，参考[这里](../内存管理/README.md#初始堆大小和最大堆大小)
+* initialHeapSize, 即-Xms设置，初始堆大小，参考[这里](../内存管理/README.md#初始堆大小和最大堆大小)
 * compressedRefs，压缩引用
 * pageSize，页面大小
 * requestedPageSize，请求页面大小
 * gcthreads，参考 -Xgcthreads 选项
+
+
+### Stop-the-world（exclusive）
+
+Stop-the-world意味着应用被暂停，GC独占JVM进程，当发生这个事件时，日志会显示exclusive-start和exclusive-end标签
+
+    <exclusive-start id="3663" timestamp="2015-12-07T14:25:14.704" intervalms="188.956">
+    <response-info timems="0.131" idlems="0.048" threads="3" lastid="000000000258CE00" lastname="Pooled Thread #2"/>
+    </exclusive-start>
+    ......
+    <exclusive-end id="3674" timestamp="2015-12-07T14:25:14.732" durationms="27.513" />
+
+以下是对日志这一部分中各个项的说明：
+
+* \<exclusive-start> 和 <exclusive-end>
+    这两个标签表示“Stop-the-world”操作，这两个标签具有以下属性：
+   
+   * timestamp：“Stop-the-world”操作的开始或结束时的本地时间戳
+   
+   * intervalms：<exclusive-start>标签的属性，距离上次此类回收的耗时，单位是毫秒
+   
+   * durationms：<exclusive-end>标签的属性，GC独占的总时间，单位是毫秒。
+   
+
+* <response-info>此标签提供GC独占JVM进程的详细信息。此标签具有以下属性：
+    
+    * timems：GC获取独占权所需的时间，单位是毫秒。要获取独占权，GC会请求所有其他线程停止处理，然后等待这些线程响应请求。如果此时间过长，可以使用 
+        -Xdump:system:events
+        选项创建系统转储文件。该转储文件可以帮助你识别独享请求响应缓慢的线程。例如，当某线程对 JVM 请求的响应时间超过1秒，那么以下选项将触发创建系统转储文件：
+        
+        
+        -Xdump:system:events=slow,filter=1000ms
+        
+ 
+   * idlems：某个线程响应GC独占请求，到最后一个线程响应GC独占请求，这段时间内，该线程其实是在等待或说是空闲的。这个属性的值是所有线程的平均空闲时间，单位是毫秒。
+
+   * threads：请求释放 JVM 访问权的线程数，所有线程必须响应。
+   * lastid：最后一个响应的线程ID。
+   * lastname：最后一个响应的线程名称。
+   
+   
+### 垃圾回收周期（cycle）
+
+GC日志显示每个垃圾回收周期，以成对的标签<cycle-start> 和 <cycle-end> 标识，每个垃圾回收周期至少包含一个垃圾回收增量。
+
+<cycle-end> 标记包含 context-id 属性，该属性与<cycle-start> 标记的 id 属性匹配，值相同即一个垃圾回收周期
+
+    <cycle-start id="4" type="scavenge" contextid="0" timestamp="2015-12-07T14:21:11.196" intervalms="225.424" />
+    <cycle-end id="10" type="scavenge" contextid="4" timestamp="2015-12-07T14:21:11.421" />
+    
+在该示例中，<cycle-end> 标记的 context-id 值为 4，与 <cycle-start>  id 值相等。
+
+以下是对日志这一部分中各个项的说明：
+
+* \<cycle-start> 和 <cycle-end>：这两个标签表示垃圾回收周期。每个标签具有以下属性：
+    * type 垃圾回收类型。此属性可以具有以下值：
+        * scavenge：新生代的回收被称为 Scavenge。
+        * global：在整个堆进行标记/清理，可选是否做整理操作。有关全局垃圾回收的更多信息，请参阅：全局垃圾回收的详细描述
+    * contextid：<cycle-end> 标签中的 contextid 属性与对应的 <cycle-start> 标签中 id 属性匹配。 
+    * timestamp：垃圾回收周期开始或结束时的本地时间戳。
+    * intervalms：距离上次此类回收的耗时，单位是毫秒。对于 <cycle-start> 标签中的intervalms值，包括前一次垃圾回收周期持续时间，以及上一次回收周期结束到本次回收周期开始之间的时间间隔。 <cycle-end>没有该属性。
+   
+   
+如果你在使用 balanced 垃圾回收策略，可能会在 <cycle-start> 标签之前看到以下行：
+
+    <allocation-taxation id="28" taxation-threshold="2621440" timestamp="2014-02-17T16:21:44.325" intervalms="319.068">
+    </allocation-taxation>
+    
+这行意思是本次垃圾收集周期是由于上个周期结束时设置的分配阈值触发的。taxation-threshold即阈值的值
+    
+### 垃圾回收增量（gc）
+  
+GC日志显示每个垃圾回收增量，以成对的标签<gc-start> 和 <gc-end> 标识。每个垃圾回收增量至少包含一个垃圾回收操作。
+
+    <gc-start id="5" type="scavenge" contextid="4" timestamp="2015-12-07T14:21:11.196">
+      <mem-info id="6" free="13649296" total="22151168" percent="61">
+        <mem type="nursery" free="10608" total="4587520" percent="0">
+          <mem type="allocate" free="10608" total="4128768" percent="0" />
+          <mem type="survivor" free="0" total="458752" percent="0" />
+        </mem>
+        <mem type="tenure" free="13638688" total="17563648" percent="77">
+          <mem type="soa" free="13638688" total="17563648" percent="77" />
+          <mem type="loa" free="0" total="0" percent="0" />
+        </mem>
+        <remembered-set count="1449" />
+      </mem-info>
+    </gc-start>
+    ...
+    <gc-op id="7" type="scavenge" timems="3.107" contextid="4" timestamp="2015-12-07T14:21:11.199">
+    ...
+    <gc-end id="8" type="scavenge" contextid="4" durationms="3.300" usertimems="14.998" systemtimems="3.000" timestamp="2015-12-07T14:21:11.200" activeThreads="10">
+      <mem-info id="9" free="16156512" total="22151168" percent="72">
+        <mem type="nursery" free="3604480" total="4587520" percent="78">
+          <mem type="allocate" free="3604480" total="4063232" percent="88" />
+          <mem type="survivor" free="0" total="524288" percent="0" />
+        </mem>
+        <mem type="tenure" free="12552032" total="17563648" percent="71">
+          <mem type="soa" free="12552032" total="17563648" percent="71" />
+          <mem type="loa" free="0" total="0" percent="0" />
+        </mem>
+        <pending-finalizers system="0" default="0" reference="2" classloader="0" />
+        <remembered-set count="1415" />
+      </mem-info>
+    </gc-end> 
+    
+以下是对日志这一部分中各个项的说明：
+
+* <gc-start>：该标签表示垃圾回收增量开始。此标签具有以下属性：
+    * type：垃圾回收类型。此属性可以具有以下值：
+       * scavenge：新生代的回收被称为 Scavenge。
+       * global：在整个堆进行标记/清理，可选是否做整理操作。有关全局垃圾回收的更多信息，请参阅：全局垃圾回收的详细描述
+    * contextid：contextid 属性与对应的垃圾回收周期的 id 属性匹配。在该示例中，值 4 表示该垃圾回收增量是 <cycle-start id="4"> 的垃圾回收周期的一部分。
+    * timestamp：垃圾回收增量开始或结束时的本地时间戳。
+    * <mem-info>：该标签提供有关 Java堆的当前状态信息。
+    
+
+
 
 
 
