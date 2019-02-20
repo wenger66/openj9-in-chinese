@@ -252,13 +252,99 @@ Final stop-the-world part of a concurrent global garbage collection
 
 #### 标记
 
+以下GC日志显示了 mark 操作的示例：
+
+    <gc-op id="9016" type="mark" timems="14.563" contextid="9013" timestamp="2015-09-28T14:47:49.927">
+      <trace-info objectcount="1896901" scancount="1307167" scanbytes="34973672" />
+      <finalization candidates="1074" enqueued="1" />
+      <references type="soft" candidates="16960" cleared="10" enqueued="6" dynamicThreshold="12" maxThreshold="32" />
+      <references type="weak" candidates="6514" cleared="1" enqueued="1" />
+      <references type="phantom" candidates="92" cleared="0" enqueued="0" />
+      <stringconstants candidates="18027" cleared="1" />
+    </gc-op>
+    
+以下是对 mark操作类标签中的各个子标签的说明：
+    * <trace-info>：包含与被跟踪对象有关的通用信息。此标签具有以下属性：
+        * objectcount：stop-the-world 阶段中发现的对象数量。
+        * scancount：非叶对象的数量，非叶对象指的是至少持有一个引用的对象。
+        * scanbytes：所有可扫描对象的总大小，单位是字节。（所有存活对象称为存活集合，此值小于存活集合的总大小。）
+    * <finalization>：参考[最终化](#最终化)
+    * <references>：参考[引用处理](#引用处理)
+    * <stringconstants>：包含与被跟踪对象有关的通用信息。此标签具有以下属性：
+        * candidates：字符串常量总数。
+        * cleared：在垃圾回收周期中移除的字符串常量数。（不会显示自上一次全局垃圾回收以来添加的字符串常量数）
+
 #### 清理
+以下GC日志显示了 sweep 操作的示例：
+
+    <gc-op id="8979" type="sweep" timems="1.468" contextid="8974" timestamp="2015-09-28T14:47:49.141" />
+    
+sweep操作类标签没有子标签
 
 #### 整理
+以下GC日志显示了 compact 操作的示例：
 
-#### scavenge
+    <gc-op id="8981" type="compact" timems="43.088" contextid="8974" timestamp="2015-09-28T14:47:49.184">
+      <compact-info movecount="248853" movebytes="10614296" reason="compact on aggressive collection" />
+    </gc-op>
+    
+compact操作类标签只有1个子标签：
+    * <compact-info>：此标签具有以下属性：
+        * movecount：移动的对象数量。
+        * movebytes：移动的对象大小，单位是字节。
+        * reason：触发整理操作的原因：
+            * compact to meet allocation：在标记/清理之后仍无法满足分配需求。
+            * compact on aggressive collection：主动垃圾回收是一种全局垃圾回收，为了尽可能释放更多内存，会包含额外步骤和GC操作。这其中一项操作为compact。主动垃圾回收一般发生在一次正常（非主动）全局垃圾回收之后，因为这次正常全局垃圾回收仍无法满足分配需求。请注意，显式回收（例如，通过调用 System.gc() ）是一种主动垃圾回收。
+            * heap fragmented：根据内部度量值，堆存在大量碎片，因此需要整理。有多种原因需要减少碎片，例如，为防止分配大对象失败、增强对象和引用的局部性、降低分配争用或降低全局垃圾回收的频率。
+            * forced gc with compaction：显式发起了一次包含 compact 操作的全局垃圾回收，例如，使用代理或工具，堆转储之前执行。
+            * low free space：可用内存小于 4%。
+            * very low free space：可用内存小于 128 KB。
+            * forced compaction：使用一个 JVM 选项（例如 -Xcompactgc）显式请求了整理。
+            * compact to aid heap contraction：在堆中按照从高到低地址范围的顺序移动对象以创建连续的空闲内存空间，从而帮助收缩堆。
 
 #### 类卸载
+
+以下GC日志显示了 classunload 操作的示例：
+
+    <gc-op id="8978" type="classunload" timems="1.452" contextid="8974" timestamp="2015-09-28T14:47:49.140">
+      <classunload-info classloadercandidates="1147" classloadersunloaded="3" classesunloaded="5"
+                    anonymousclassesunloaded="0" quiescems="0.000" setupms="1.408" scanms="0.041" postms="0.003" />
+    </gc-op>
+    
+classunload操作类标签只有1个子标签：
+    * <classunload-info>：此标签具有以下属性：
+        * classloadercandidates：类加载器的总数。
+        * classloadersunloaded：该垃圾回收周期中卸载的类加载器数量。
+        * classesunloaded：卸载的类的数量。
+        * anonymousclassesunloaded：卸载的匿名类的数量。（匿名类单独卸载并单独报告。）
+        * quiescems、setupms、scanms、postms：总时间细分到四个子步骤中，单位是毫秒。
+        
+#### 清扫
+清扫操作仅在 gencon 垃圾回收策略中发生。当新生代中的分配区满时将运行清扫操作。在清扫期间，可达的对象将被复制到新生代的存活区，或者达到年龄后直接复制到老年代。更多信息请参阅[分代并发垃圾收集器](../垃圾回收/分代垃圾收集器/README.md)。
+
+以下GC日志显示了 清扫 操作的示例：
+
+    <gc-op id="9029" type="scavenge" timems="2.723" contextid="9026" timestamp="2015-09-28T14:47:49.998">
+      <scavenger-info tenureage="3" tenuremask="ffb8" tiltratio="89" />
+      <memory-copied type="nursery" objects="11738" bytes="728224" bytesdiscarded="291776" />
+      <memory-copied type="tenure" objects="6043" bytes="417920" bytesdiscarded="969872" />
+      <finalization candidates="266" enqueued="0" />
+      <references type="soft" candidates="94" cleared="0" enqueued="0" dynamicThreshold="12" maxThreshold="32" />
+      <references type="weak" candidates="317" cleared="25" enqueued="17" />
+    </gc-op>
+    
+以下是对 scavenge 操作类标签中的各个子标签的说明：
+    * <scavenger-info>：包含与操作有关的通用信息。此标签具有以下属性：
+        * tenureage：对象被提升到老年代的年龄。更多信息请参阅[分代并发垃圾收集器](../垃圾回收/分代垃圾收集器/README.md)。
+        * tenuremask
+        * tiltratio：上次清扫事件和空间调整之后的倾斜率（百分比）。清扫器使用名为“倾斜”的进程在分配区和存活区之间重新分配内存。 “倾斜”进程控制分配区和存活区的相对大小，并调整倾斜率以最大程度地延长两次scavenge操作之间的时间。倾斜率为 60% 表示新生代的 60% 空间用于分配区，40% 空间用于存活区。更多信息请参阅[分代并发垃圾收集器](../垃圾回收/分代垃圾收集器/README.md#倾斜率)。
+    * <memory-copied>：拷贝到新生代存活区或晋升到老年代的对象数量。此标签具有以下属性：
+        * type：值为 nursery 或 tenure。
+        * objects：拷贝到新生代存活区或晋升到老年代的对象数量。
+        * bytes：拷贝到新生代存活区或晋升到老年代的对象大小，单位是字节。
+        * bytesdiscarded：没有成功晋升到老年代的对象The number of bytes consumed in the nursery or tenure area but not successfully used for flipping or promotion。对于每个区域，已消耗内存总量是 bytes 和 bytesdiscarded 值的总和。
+    * <finalization>：参考[最终化](#最终化)
+    * <references>：参考[引用处理](#引用处理)
 
 #### 最终化
 
