@@ -1,6 +1,6 @@
 # 垃圾回收器诊断数据
 
-作者：垃圾回收器下文简称为GC
+*作者注：垃圾回收器下文简称为GC*
 
 ## 输出GC详细数据
 
@@ -211,7 +211,7 @@ GC日志显示每个垃圾回收增量，以成对的标签<gc-start> 和 <gc-en
         * tenure：tenure 类型说明此 <mem> 标签表示的是Java堆的老年带区域，该区域用于存储达到一定年龄的对象。该区域可以进一步划分为 soa 和 loa 区域。
             * soa：表示老年代堆中小对象区域。该区域用于对象的首次分配尝试（？）。
             * loa：表示老年代堆中大对象区域。该区域用于大对象的分配。这部分更多信息，请参阅[大对象区域](../内存管理/分配/大对象区域/README.md)
-<gc-end> 标签还包含 <pending-finalizers> 标签。这部分更多信息，请参阅[最终化](GC_log.md#最终化)。
+<gc-end> 标签还包含 <pending-finalizers> 标签。这部分更多信息，请参阅[析构](GC_log.md#析构)。
 
 ### 垃圾回收操作（gc-op）
 
@@ -268,7 +268,7 @@ Final stop-the-world part of a concurrent global garbage collection
         * objectcount：stop-the-world 阶段中发现的对象数量。
         * scancount：非叶对象的数量，非叶对象指的是至少持有一个引用的对象。
         * scanbytes：所有可扫描对象的总大小，单位是字节。（所有存活对象称为存活集合，此值小于存活集合的总大小。）
-    * <finalization>：参考[最终化](#最终化)
+    * <finalization>：参考[析构](#析构)
     * <references>：参考[引用处理](#引用处理)
     * <stringconstants>：包含与被跟踪对象有关的通用信息。此标签具有以下属性：
         * candidates：字符串常量总数。
@@ -343,11 +343,38 @@ classunload操作类标签只有1个子标签：
         * objects：拷贝到新生代存活区或晋升到老年代的对象数量。
         * bytes：拷贝到新生代存活区或晋升到老年代的对象大小，单位是字节。
         * bytesdiscarded：没有成功晋升到老年代的对象The number of bytes consumed in the nursery or tenure area but not successfully used for flipping or promotion。对于每个区域，已消耗内存总量是 bytes 和 bytesdiscarded 值的总和。
-    * <finalization>：参考[最终化](#最终化)
+    * <finalization>：参考[析构](#析构)
     * <references>：参考[引用处理](#引用处理)
 
-#### 最终化
+#### 析构
+垃圾回收通过可达性分析可以回收对象占用的内存。而析构是为了回收对象获得的资源，例如文件句柄、端口、数据库连接等等。不过无法预测析构函数的执行效果，也无法保证析构函数一定会执行。即使能够保证析构函数被执行，在析构函数中释放资源也不是一个好的实践。
 
+*作者注：我理解这部分主要是针对含有析构函数的对象，所谓析构器就是析构函数*
+
+GC日志的 <finalization> 标签负责记录当前 GC 操作中可析构并且已排队的对象数量。<pending-finalizers> 小节位于 <gc-end> 标签中，记录可析构对象队列的状态。可析构对象队列的状态是指当前 GC 操作中可析构并且已排队的对象，加上过去尚未析构的所有对象的总和。
+
+以下GC日志显示了 <finalization> 标签的示例：
+
+    <finalization candidates="1088" enqueued="10">
+  
+   * <finalization>：此标签中显示对象数量，这些对象包含有析构器的对象和在垃圾回收期间排队等待虚拟机析构的对象。 此数量并不等于垃圾回收期间运行的析构器的数量，因为析构器由虚拟机调度。此标签具有以下属性：
+        * candidates：在 GC 周期中发现的可析构对象的数量。此数量包括存活的可析构对象的数量以及自上一个 GC 周期以来不再活动的可析构对象数量。 只有不再存活的对象才会排队等待析构。
+        * enqueued：符合析构资格的候选对象数量。
+        
+以下GC日志显示了 <pending-finalizers> 标签的示例，该标签仅会在 gc-end 部分出现
+
+    <pending-finalizers system="3" default="7" reference="40" classloader="0" />
+    
+   * <pending-finalizers>：可析构对象队列的当前状态。
+        * system：已排队系统对象的数量。
+        * default：已排队默认对象的数量。在 GC 周期结束时，系统对象和默认对象的总数大于或等于同一 GC 周期中符合最终化资格的候选对象数量。
+        * reference：已排队的引用数量。即，已被清除以及自上一个 GC 周期以来具有关联引用队列的引用数量。通常，暂挂的引用数量大于或等于同一周期内 gc-op 部分中显示的已入队的弱引用、软引用和虚引用的总和。
+        * classloader：符合异步卸载资格的类加载器的数量。
+        
+如果等待析构对象的数量超过当前 GC 周期新建的候选析构数量，finalization cannot keep up with the influx。此情况可能指示较不理想的行为。您可以使用以下计算方式来算出在 GC 周期开始时未完成的暂挂析构器对象的数量：  
+
+    number of outstanding pending finalizer objects at the beginning = 
+    number of pending finalizer objects at the end - candidates created in this cycle  
 
 #### 引用处理
 
