@@ -149,3 +149,29 @@ JNI 弱引用提供与 WeakReference 对象相同的功能，但处理方式大�
 
 删除 JNI 弱引用失败将导致内存泄漏，并会导致发生性能问题。对于 JNI 全局引用也是如此。在引用处理过程中，对 JNI 弱引用的处理是在最后进行的。
 其结果是，对于一个已经最终化并且在此之前已将一个虚引用放入队列并进行处理的对象，可以存在一个 JNI 弱引用。
+
+## 堆扩展
+
+堆扩展发生在垃圾回收后，此时虚拟机仍被独占。在一系列特定情形下才会发生堆扩展。
+
+如果以下3个条件之一为 true，那么堆的活动部分将扩展为最大值。
+
+* 垃圾回收器 (GC) 未释放足够的存储空间来满足分配请求。
+* 可用空间小于使用 [-Xminf](../../命令行参数/JVM-X参数/-Xminf.md) 选项设置的最小可用空间。默认值为 30%。
+* 垃圾回收所用时间超过使用 [-Xmaxt](../../命令行参数/JVM-X参数/-Xmaxt.md) 选项设置的最大时间阈值。 默认值为 13%。
+计算扩展堆的数量的方法如下：
+1. [-Xminf](../../命令行参数/JVM-X参数/-Xminf.md) 选项指定在垃圾回收后将保留为可用堆的最小百分比。如果将扩展堆以满足该值，那么 GC 将计算需要多少堆扩展。
+您可以使用 [-Xmaxe](../../命令行参数/JVM-X参数/-Xmaxe.md)参数来设置最大扩展量。 默认值为 0，表示不存在最大扩展限制。如果计算的所需堆扩展大于 [-Xmaxe](../../命令行参数/JVM-X参数/-Xmaxe.md) 的非零值，那么所需的堆扩展将减少为 [-Xmaxe](../../命令行参数/JVM-X参数/-Xmaxe.md) 的值。
+
+您可以使用 [-Xmine](../../命令行参数/JVM-X参数/-Xmine.md) 参数来设置最小扩展量。 默认值为 1 MB。如果计算的所需堆扩展小于 [-Xmine](../../命令行参数/JVM-X参数/-Xmine.md) 的值，那么所需的堆扩展将增加到 [-Xmine](../../命令行参数/JVM-X参数/-Xmine.md) 的值。
+
+2. 如果堆正在扩展并且 JVM 所用时间超过最大时间阈值，那么 GC 将计算要提供 17% 的可用空间所需的堆扩展量。将按照先前步骤中的描述，根据 [-Xmaxe](../../命令行参数/JVM-X参数/-Xmaxe.md) 和 [-Xmine](../../命令行参数/JVM-X参数/-Xmine.md) 来调整扩展。
+3. 如果垃圾回收未释放足够的存储空间，那么 GC 确保至少将堆扩展分配请求的值。
+所有计算的扩展值都将四舍五入为最接近 512 字节（在 32 位 JVM 上）或 1024 字节（在 64 位 JVM 上）的值。
+
+
+You can set the minimum expansion amount using the -Xmine parameter. The default value is 1 MB. If the calculated required heap expansion is less than the value of -Xmine, the required heap expansion is increased to the value of -Xmine.
+
+If the heap is expanding and the JVM is spending more than the maximum time threshold, the GC calculates how much heap expansion is needed to provide 17% free space. The expansion is adjusted as described in the previous step, depending on -Xmaxe and -Xmine.
+If garbage collection did not free enough storage, the GC ensures that the heap is expanded by at least the value of the allocation request.
+All calculated expansion amounts are rounded to the nearest 512-byte boundary on 32-bit JVMs or a 1024-byte boundary on 64-bit JVMs.
