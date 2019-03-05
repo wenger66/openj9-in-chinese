@@ -43,6 +43,51 @@ If an overflow occurs, the GC empties one of the work packets by popping its ref
 
 When a marking thread asks for a new non-empty packet and all work packets are empty, the GC checks the list of overflow classes. If the list is not empty, the GC traverses this list and repopulates a work packet with the references to the objects on the overflow lists. These packets are then processed as described previously. Tracing is complete when all the work packets are empty and the overflow list is empty.
 
+### 并行标记
+
+并行标记的目的是在不降低单处理器系统标记性能的情况下，提高多处理器系统通用标记操作的性能。
+
+通过增加工作包池的助手线程，可以提高对象标记的性能。 例如，一个线程返回给池的完整输出包可以作为另一个线程的新输入包。
+
+并行标记仍需要一个应用程序的线程参与，该线程用于主协调代理。助手线程可以标识回收的根指针并跟踪这些根。 标记位是使用主机原子原语来更新的，不需要附加锁。
+
+有关助手线程数量以及如何改变这一数量的信息，可以参考[垃圾回收器的常见问题及解答](../常见问题及解答/README.md)。
+
+
+### 并发标记
+
+在堆大小增加时，并发标记能够缩短并稳定？垃圾回收暂停时间。
+
+GC 在堆满之前启动并发标记阶段。 在并发阶段过程中，GC 扫描堆，检查“根”对象，比如堆栈、JNI 引用和类静态字段。 GC 通过要求每个线程扫描自己的堆栈来扫描堆栈。
+随后，这些根将用于并发跟踪活动对象。在线程执行堆锁分配时，跟踪由低优先级的后台线程和每个应用线程执行。
+
+当 GC 利用正在运行的应用程序线程并发标记活动对象时，必须记录对已跟踪对象的任何更改。它使用 Write Barrier 机制，在每次更新对象中的引用时运行。
+在发生对象引用更新时，Write Barrier将使用标记位。 使用该标记位可能迫使对部分堆重新扫描。
+
+堆被分成大小是 512 个字节的段。每个段在卡表中占据一个单字节卡。 每当更新对象的引用时，已经更新为新对象引用的对象的起始地址相对应的卡，会标记为 16 进制值 0x01。卡表允许使用非原子操作来标记卡，使用字节来代替位可以解决争用问题。 在发生以下某种情况时，将启动 Stop-The-World 回收：
+* 分配失败
+* 显示 System.gc 调用
+* 并发标记已完成所有可能的标记。
+
+GC 尝试启动并发标记阶段以便能够恰好在堆耗尽时结束。GC 通过不断调优管理并发标记时间的参数来识别最佳开始时间。 在 STW 阶段，GC 重新扫描所有根，
+之后使用已标记的卡来查看其他必须重新跟踪的对象。 然后 GC 正常进行清理。 可以保证在并发标记阶段开始时所有不可达的对象能够回收。但是，不能保证
+在并发标记阶段过程中新变为不可达的对象也能够回收。 在并发标记阶段变为不可达的对象，我们称为“浮动垃圾”。
+
+缩短且稳定的暂停时间是并发标记的优点，但会增加成本。在请求堆锁分配时，应用程序线程必须执行一些跟踪。所需的处理器使用情况取决于后台线程可用的空闲处理器时间。此外， Write Barrier 需要额外的处理器使用率。
+
+[-Xgcpolicy](../../命令行参数/JVM-X参数/-Xgcpolicy.md) 命令行选项可用于启用和禁用并发标记：
+
+-Xgcpolicy: <gencon | optavgpause | optthruput | subpool | balanced>
+
+-Xgcpolicy 选项可以达到如下效果：
+
+* gencon：启用并发标记，并将其与分代垃圾回收结合使用，尽可能缩短任何垃圾回收暂停中耗费的时间。gencon 是 gcpolicy 的默认设置。 
+如果遇到由正常垃圾回收导致的不确定的应用程序响应时间问题，使用 gencon 选项可减少这类问题、减少堆碎片，并仍旧保持较大的吞吐量。该选项对那些使用许多短生命周期对象的应用程序特别有用。
+* optavgpause：启用并发标记。如果遇到由正常垃圾回收导致的不确定的应用程序响应时间问题，使用 optavgpause 选项可在牺牲部分吞吐量的情况下减轻这类问题。
+* optthruput：禁用并发标记。如果没有发生暂停时间问题（表现为不确定的应用程序响应时间），使用该选项可获得最佳吞吐量。
+* subpool：该选项已弃用，现为 optthruput 的别名。 因此，如果使用该选项，那么其作用与 optthruput 相同。
+* balanced：禁用并发标记。该策略将使用并行垃圾回收技术，但不是以执行并发标记的方式进行。 有关更多信息，请参阅[全局标记阶段](../均衡垃圾回收策略/README.md#全局标记阶段)。
+
 ## 清理阶段
 
 标记阶段完成后，标记位向量标识了所有活动对象在堆中的位置。清理阶段依据此来标识可回收以供未来分配的堆存储块，这些块被添加到可用空间池。
@@ -169,9 +214,48 @@ JNI 弱引用提供与 WeakReference 对象相同的功能，但处理方式大�
 3. 如果垃圾回收未释放足够的存储空间，那么 GC 确保至少将堆扩展分配请求的值。
 所有计算的扩展值都将四舍五入为最接近 512 字节（在 32 位 JVM 上）或 1024 字节（在 64 位 JVM 上）的值。
 
+## 堆收缩
 
-You can set the minimum expansion amount using the -Xmine parameter. The default value is 1 MB. If the calculated required heap expansion is less than the value of -Xmine, the required heap expansion is increased to the value of -Xmine.
+在垃圾回收后仍存在虚拟机互斥存取时将发生堆收缩。在一系列特定情形下不会发生收缩。另外，还存在一种情形，在收缩之前发生压缩。
 
-If the heap is expanding and the JVM is spending more than the maximum time threshold, the GC calculates how much heap expansion is needed to provide 17% free space. The expansion is adjusted as described in the previous step, depending on -Xmaxe and -Xmine.
-If garbage collection did not free enough storage, the GC ensures that the heap is expanded by at least the value of the allocation request.
-All calculated expansion amounts are rounded to the nearest 512-byte boundary on 32-bit JVMs or a 1024-byte boundary on 64-bit JVMs.
+如果以下任何一种情况为 true，那么不会发生收缩：
+
+垃圾收集器 (GC) 未释放足够的空间来满足分配请求。
+可由 -Xmaxf 参数设置的最大可用空间已设置为 100%（缺省值为 60%）。
+在最后三次垃圾回收中扩展了堆。
+这是 System.gc()，并且在垃圾回收开始时可用空间量低于堆活动部分的 -Xminf（缺省值为 30%）。
+如果之前的任何一个项都不为 true，并且存在大于 -Xmaxf 的可用空间，那么 GC 必须计算将堆收缩多少以使其在不小于初始 (-Xms) 值的情况下，获得 -Xmaxf 的可用空间。该数字将四舍五入为 512 字节边界（32 位 JVM 上）或 1024 字节边界（64 位 JVM 上）。
+如果以下所有情况都为 true，那么在收缩前将发生压缩：
+
+在此垃圾回收周期中，未完成压缩。
+在堆末端无可用块，或者堆末端可用块的大小小于所需的收缩量的 10%。
+在上一个垃圾回收周期中，GC 未收缩或压缩。
+在初始化期间，JVM 在单个连续的虚拟存储器区域内分配整个堆。分配的数量由 -Xmx 参数的设置确定。 堆的任何虚拟空间从未释放回本机操作系统。在堆收缩时，将在初始虚拟空间内部收缩。
+
+根据本机操作系统的功能来确定是否释放任何物理内存。如果支持页面调度，以及本机操作系统向虚拟存储器落实和取消落实物理内存的功能，那么 GC 使用该功能。在这种情况下，可以对堆收缩取消落实物理内存。
+
+您永远不会发现 JVM 使用的虚拟存储量减少。您可能会发现在堆收缩后，物理内存可用大小增加。本机操作系统确定如何利用取消落实的页面。
+
+在支持页面调度时，GC 将向初始堆分配物理内存，所分配的数量由 -Xms 参数指定。在堆增长时将落实额外的内存。
+
+Heap shrinkage occurs after garbage collection while exclusive access of the virtual machine is still held. Shrinkage does not occur in a set of specific situations. Also, there is a situation where a compaction occurs before the shrink.
+
+Shrinkage does not occur if any of the following conditions are true:
+
+The Garbage Collector (GC) did not free enough space to satisfy the allocation request.
+The maximum free space, which can be set by the -Xmaxf parameter (default is 60%), is set to 100%.
+The heap has been expanded in the last three garbage collections.
+This is a System.gc() and the amount of free space at the beginning of the garbage collection was less than -Xminf (default is 30%) of the live part of the heap.
+If none of the previous options are true, and more than -Xmaxf free space exists, the GC must calculate how much to shrink the heap to get it to -Xmaxf free space, without dropping to less than the initial (-Xms) value. This figure is rounded down to a 512-byte boundary on 32-bit JVMs or a 1024-byte boundary on 64-bit JVMs.
+A compaction occurs before the shrink if all the following conditions are true:
+
+A compaction was not done on this garbage collection cycle.
+No free chunk is at the end of the heap, or the size of the free chunk that is at the end of the heap is less than 10% of the required shrinkage amount.
+The GC did not shrink and compact on the last garbage collection cycle.
+On initialization, the JVM allocates the whole heap in a single contiguous area of virtual storage. The amount that is allocated is determined by the setting of the -Xmx parameter. No virtual space from the heap is ever freed back to the native operating system. When the heap shrinks, it shrinks inside the original virtual space.
+
+Whether any physical memory is released depends on the ability of the native operating system. If it supports paging; the ability of the native operating system to commit and decommit physical storage to the virtual storage; the GC uses this function. In this case, physical memory can be decommitted on a heap shrinkage.
+
+You never see the amount of virtual storage that is used by the JVM decrease. You might see physical memory free size increase after a heap shrinkage. The native operating system determines what it does with decommitted pages.
+
+Where paging is supported, the GC allocates physical memory to the initial heap to the amount that is specified by the -Xms parameter. Additional memory is committed as the heap grows.
